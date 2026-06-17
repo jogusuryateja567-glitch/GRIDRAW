@@ -154,7 +154,7 @@ private fun ProjectCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f, fill = true)
+                .fillMaxSize()
                 .background(
                     Brush.linearGradient(
                         listOf(AccentBlue.copy(alpha = 0.1f), AccentPurple.copy(alpha = 0.05f))
