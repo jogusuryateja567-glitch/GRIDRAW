@@ -27,6 +27,11 @@ import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.components.*
 import com.gridraw.app.ui.theme.*
 import com.gridraw.app.viewmodel.EditorViewModel
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
+import com.gridraw.app.viewmodel.EditorViewModel
 
 // ──────────────────────────────────────────────────────────────────────────────
 // EditorScreen — Main Canvas + Controls
@@ -40,6 +45,7 @@ fun EditorScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val hazeState = remember { HazeState() }
 
     // Viewport gesture state
     var zoom by remember { mutableFloatStateOf(state.viewportZoom.coerceAtLeast(0.05f)) }
@@ -59,6 +65,7 @@ fun EditorScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(BgRoot)
+            .haze(state = hazeState)
     ) {
         // ── Viewport (pannable + zoomable canvas) ─────────────────────────────
         Box(
@@ -115,6 +122,7 @@ fun EditorScreen(
 
         // ── Top Bar ───────────────────────────────────────────────────────────
         EditorTopBar(
+            hazeState = hazeState,
             hasImage = state.hasImage,
             onBack = onNavigateBack,
             onReplace = { imageLauncher.launch("image/*") },
@@ -169,6 +177,7 @@ fun EditorScreen(
                 .navigationBarsPadding()
         ) {
             ToolDock(
+                hazeState = hazeState,
                 visible = !state.isPanelOpen,
                 zoomPercent = (zoom * 100).toInt(),
                 canUndo = state.canUndo,
@@ -197,6 +206,7 @@ fun EditorScreen(
 
         // ── Control Panel ─────────────────────────────────────────────────────
         ControlPanel(
+            hazeState = hazeState,
             isOpen = state.isPanelOpen,
             activeTab = state.activeTab,
             paperSize = state.paperSize,
@@ -306,6 +316,7 @@ private fun WelcomePlaceholder(onImport: () -> Unit) {
 
 @Composable
 private fun EditorTopBar(
+    hazeState: HazeState,
     hasImage: Boolean,
     onBack: () -> Unit,
     onReplace: () -> Unit,
@@ -323,8 +334,8 @@ private fun EditorTopBar(
             onClick = onBack,
             modifier = Modifier
                 .size(44.dp)
-                .clip(CircleShape)
-                .background(BgPanel.copy(alpha = 0.8f))
+                .hazeChild(state = hazeState, shape = CircleShape, style = HazeStyle(blurRadius = 15.dp, tint = BgPanel.copy(alpha = 0.4f)))
+                .border(1.dp, BorderGlass, CircleShape)
         ) {
             Icon(Icons.Rounded.ArrowBackIosNew, null, tint = TextMain)
         }
@@ -334,12 +345,12 @@ private fun EditorTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
-                .clip(RoundedCornerShape(100.dp))
-                .background(BgPanel.copy(alpha = 0.8f))
+                .hazeChild(state = hazeState, shape = RoundedCornerShape(100.dp), style = HazeStyle(blurRadius = 15.dp, tint = BgPanel.copy(alpha = 0.4f)))
+                .border(1.dp, BorderGlass, RoundedCornerShape(100.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            Icon(Icons.Rounded.GridOn, null, tint = AccentBlue, modifier = Modifier.size(18.dp))
-            Text("GRIDRAW", color = TextMain, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 1.sp)
+            Icon(Icons.Rounded.GridOn, null, tint = TextMain, modifier = Modifier.size(18.dp))
+            Text("GRIDRAW", color = TextMain, fontWeight = FontWeight.Bold, fontSize = 14.sp, letterSpacing = 2.sp)
         }
 
         // Replace image
@@ -348,8 +359,8 @@ private fun EditorTopBar(
                 onClick = onReplace,
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(CircleShape)
-                    .background(BgPanel.copy(alpha = 0.8f))
+                    .hazeChild(state = hazeState, shape = CircleShape, style = HazeStyle(blurRadius = 15.dp, tint = BgPanel.copy(alpha = 0.4f)))
+                    .border(1.dp, BorderGlass, CircleShape)
             ) {
                 Icon(Icons.Rounded.SwapHoriz, null, tint = TextMain)
             }

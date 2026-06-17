@@ -106,5 +106,8 @@ dependencies {
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
 
+    // Haze (Glassmorphism)
+    implementation("dev.chrisbanes.haze:haze:0.7.2")
+
     debugImplementation(libs.androidx.ui.tooling)
 }

@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.theme.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Floating Tool Dock
@@ -32,6 +35,7 @@ import com.gridraw.app.ui.theme.*
 
 @Composable
 fun ToolDock(
+    hazeState: HazeState,
     visible: Boolean,
     zoomPercent: Int,
     canUndo: Boolean,
@@ -59,16 +63,8 @@ fun ToolDock(
             Row(
                 modifier = Modifier
                     .padding(bottom = 28.dp)
-                    .background(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                BgPanel.copy(alpha = 0.9f),
-                                BgCard.copy(alpha = 0.9f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(100.dp)
-                    )
-                    .shadow(16.dp, RoundedCornerShape(100.dp))
+                    .hazeChild(state = hazeState, shape = RoundedCornerShape(100.dp), style = HazeStyle(blurRadius = 30.dp, tint = BgPanel.copy(alpha = 0.5f)))
+                    .border(1.dp, BorderGlass, RoundedCornerShape(100.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
@@ -94,12 +90,13 @@ fun ToolDock(
                 // Zoom display
                 Text(
                     text = "$zoomPercent%",
-                    color = AccentBlue,
+                    color = TextMain,
                     fontSize = 13.sp,
                     modifier = Modifier.widthIn(min = 48.dp),
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    )
+                    ),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
 
                 DockButton(
@@ -140,16 +137,12 @@ fun ToolDock(
 
                 DockDivider()
 
-                // Settings pill button (gradient)
+                // Settings pill button
                 Box(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(AccentBlue, AccentPurple)
-                            )
-                        )
+                        .background(Color(0xFFEBEBF5)) // Apple-style light gray/white for contrast
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
@@ -162,7 +155,7 @@ fun ToolDock(
                     Icon(
                         imageVector = Icons.Rounded.Tune,
                         contentDescription = "Settings",
-                        tint = Color.White,
+                        tint = Color.Black,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -185,7 +178,7 @@ fun DockButton(
             .size(44.dp)
             .clip(CircleShape)
             .background(
-                if (isActive) AccentBlue.copy(alpha = 0.15f) else Color.Transparent
+                if (isActive) Color(0xFFEBEBF5) else Color.Transparent
             )
     ) {
         Icon(
@@ -193,7 +186,7 @@ fun DockButton(
             contentDescription = null,
             tint = when {
                 !enabled -> TextDim
-                isActive -> AccentBlue
+                isActive -> Color.Black
                 else     -> TextMain
             },
             modifier = Modifier.size(22.dp)

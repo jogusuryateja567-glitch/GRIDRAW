@@ -3,35 +3,36 @@ package com.gridraw.app.ui.theme
 import androidx.compose.ui.graphics.Color
 
 // ── Deep Background ──────────────────────────────────────────────────────────
-val BgRoot       = Color(0xFF050507)
-val BgPanel      = Color(0xFF111116)
-val BgCard       = Color(0xFF18181E)
-val BgInput      = Color(0xFF1E1E26)
-val BgInputHover = Color(0xFF25252F)
+val BgRoot       = Color(0xFF000000) // Pure black for OLED / spatial feel
+val BgPanel      = Color(0xFF141415) // Very dark gray for elevated panels
+val BgCard       = Color(0x801A1A1E) // Semi-transparent card
+val BgInput      = Color(0x1AFFFFFF) // 10% White for inputs
+val BgInputHover = Color(0x33FFFFFF) // 20% White for hover/pressed
 
 // ── Accent Colors ─────────────────────────────────────────────────────────────
-val AccentBlue      = Color(0xFF5B8DFF)   // Primary accent
-val AccentBlueDim   = Color(0x335B8DFF)  // 20% alpha
-val AccentPurple    = Color(0xFF9B6BFF)  // Secondary accent
-val AccentCyan      = Color(0xFF3DD8FF)  // Tertiary highlight
-val AccentGradStart = Color(0xFF5B8DFF)
-val AccentGradEnd   = Color(0xFF9B6BFF)
+val AccentBlue      = Color(0xFFFFFFFF) // Replaced neon blue with Pure White for monochromatic premium feel
+val AccentBlueDim   = Color(0x33FFFFFF) // Dim white
+val AccentPurple    = Color(0xFFAAAAAA) // Replaced neon purple with subtle silver
+val AccentCyan      = Color(0xFFE5E5EA) // Replaced neon cyan with Apple-style off-white
+val AccentGradStart = Color(0xFFFFFFFF)
+val AccentGradEnd   = Color(0xFFAAAAAA)
 
 // ── Text ──────────────────────────────────────────────────────────────────────
-val TextMain  = Color(0xFFF0F0F8)
-val TextMuted = Color(0xFF80808A)
-val TextDim   = Color(0xFF4A4A55)
+val TextMain  = Color(0xFFFFFFFF)
+val TextMuted = Color(0xFF8E8E93) // Apple system gray 1
+val TextDim   = Color(0xFF636366) // Apple system gray 2
 
 // ── Borders ───────────────────────────────────────────────────────────────────
-val BorderLight = Color(0x14FFFFFF)  // 8% white
+val BorderLight = Color(0x1AFFFFFF)  // 10% white
 val BorderHover = Color(0x33FFFFFF)  // 20% white
+val BorderGlass = Color(0x4DFFFFFF)  // 30% white for glass edges
 
 // ── Status ────────────────────────────────────────────────────────────────────
-val Danger  = Color(0xFFFF4D6A)
-val Success = Color(0xFF00E676)
-val Warning = Color(0xFFFFBE00)
-val Info    = Color(0xFF5B8DFF)
+val Danger  = Color(0xFFFF453A) // Apple red
+val Success = Color(0xFF32D74B) // Apple green
+val Warning = Color(0xFFFF9F0A) // Apple orange
+val Info    = Color(0xFF0A84FF) // Apple blue (kept only for semantic info)
 
 // ── Surface Variants ──────────────────────────────────────────────────────────
-val SurfaceVariant   = Color(0xFF1C1C24)
-val OnSurfaceVariant = Color(0xFF9898A6)
+val SurfaceVariant   = Color(0x1AFFFFFF) // Frosted overlay base
+val OnSurfaceVariant = Color(0xFFEBEBF5)

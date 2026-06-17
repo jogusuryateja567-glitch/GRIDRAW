@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.data.models.*
 import com.gridraw.app.ui.theme.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Control Panel — Bottom Sheet with Tabs
@@ -35,6 +38,7 @@ import com.gridraw.app.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlPanel(
+    hazeState: HazeState,
     isOpen: Boolean,
     activeTab: Int,
     paperSize: PaperSize,
@@ -63,24 +67,28 @@ fun ControlPanel(
         ModalBottomSheet(
             onDismissRequest = onClose,
             sheetState = sheetState,
-            containerColor = BgPanel,
+            containerColor = Color.Transparent,
             contentColor = TextMain,
-            dragHandle = {
-                Box(
-                    modifier = Modifier
-                        .padding(vertical = 12.dp)
-                        .width(40.dp)
-                        .height(4.dp)
-                        .clip(CircleShape)
-                        .background(BorderHover)
-                )
-            }
+            dragHandle = null
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
+                    .hazeChild(state = hazeState, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), style = HazeStyle(blurRadius = 30.dp, tint = BgPanel.copy(alpha = 0.6f)))
+                    .border(1.dp, BorderGlass, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             ) {
+                // Custom drag handle
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 12.dp, bottom = 8.dp)
+                            .width(40.dp)
+                            .height(5.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.3f))
+                    )
+                }
                 // Tab Row
                 PanelTabRow(activeTab = activeTab, onTabChange = onTabChange)
 
@@ -159,13 +167,13 @@ private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
                 Icon(
                     imageVector = tab.icon,
                     contentDescription = tab.label,
-                    tint = if (selected) AccentBlue else TextMuted,
+                    tint = if (selected) Color.White else TextMuted,
                     modifier = Modifier.size(22.dp)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = tab.label,
-                    color = if (selected) AccentBlue else TextMuted,
+                    color = if (selected) Color.White else TextMuted,
                     fontSize = 11.sp,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 )
@@ -176,7 +184,7 @@ private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
                             .width(20.dp)
                             .height(2.dp)
                             .clip(CircleShape)
-                            .background(AccentBlue)
+                            .background(Color.White)
                     )
                 }
             }
@@ -397,8 +405,8 @@ private fun ImageTab(
             enabled = hasImage,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
-                containerColor = AccentPurple.copy(alpha = 0.15f),
-                contentColor = AccentPurple
+                containerColor = Color.White.copy(alpha = 0.15f),
+                contentColor = Color.White
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -639,7 +647,7 @@ fun ToggleRow(
             onCheckedChange = { onToggle() },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
-                checkedTrackColor = AccentBlue,
+                checkedTrackColor = Color(0xFF32D74B), // Apple Green
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = BgInputHover
             )
@@ -690,11 +698,11 @@ fun InfoRow(key: String, value: String) {
 
 @Composable
 fun gridTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = AccentBlue,
+    focusedBorderColor = Color.White,
     unfocusedBorderColor = BorderLight,
-    focusedLabelColor = AccentBlue,
+    focusedLabelColor = Color.White,
     unfocusedLabelColor = TextMuted,
-    cursorColor = AccentBlue,
+    cursorColor = Color.White,
     focusedTextColor = TextMain,
     unfocusedTextColor = TextMain,
     unfocusedContainerColor = BgInput,
