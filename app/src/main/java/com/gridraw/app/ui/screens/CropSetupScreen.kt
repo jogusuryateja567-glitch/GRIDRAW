@@ -74,8 +74,8 @@ fun CropSetupScreen(
                         Pair(paperSize.widthMm, paperSize.heightMm)
                     }
                     // Create a high-res bitmap for the final output matching paper aspect ratio
-                    // Let's use max dimension of original image to determine resolution
-                    val maxDim = maxOf(bitmap.width, bitmap.height)
+                    // Clamp max dimension to 2048 to prevent OOM
+                    val maxDim = minOf(2048, maxOf(bitmap.width, bitmap.height))
                     val outW: Int
                     val outH: Int
                     if (wMm > hMm) {

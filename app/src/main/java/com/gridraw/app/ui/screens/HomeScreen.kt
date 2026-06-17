@@ -28,6 +28,10 @@ import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.theme.*
 import com.gridraw.app.viewmodel.EditorViewModel
 import com.gridraw.app.ui.navigation.Screen
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 // ──────────────────────────────────────────────────────────────────────────────
 // HomeScreen
@@ -41,6 +45,7 @@ fun HomeScreen(
     onNavigate: (String) -> Unit
 ) {
     val context = LocalContext.current
+    val hazeState = remember { HazeState() }
 
     val imageLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -69,7 +74,9 @@ fun HomeScreen(
     ) {
         // Subtle monochromatic background shapes
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(state = hazeState)
         ) {
             // Elegant large dark gray circle in top left
             Box(
@@ -145,6 +152,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(130.dp),
+                hazeState = hazeState,
                 onClick = { imageLauncher.launch("image/*") }
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -177,17 +185,18 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Camera
                 SpatialActionCard(
                     modifier = Modifier.weight(1f),
-                    icon = Icons.Rounded.PhotoCamera,
-                    label = "Camera",
+                    hazeState = hazeState,
+                    icon = Icons.Rounded.CenterFocusWeak,
+                    label = "AR Drawing",
                     onClick = { cameraPermLauncher.launch(Manifest.permission.CAMERA) }
                 )
 
                 // Projects
                 SpatialActionCard(
                     modifier = Modifier.weight(1f),
+                    hazeState = hazeState,
                     icon = Icons.Rounded.FolderOpen,
                     label = "Projects",
                     onClick = onOpenProjects
@@ -205,7 +214,7 @@ fun HomeScreen(
                 letterSpacing = 2.sp
             )
             Spacer(Modifier.height(16.dp))
-            FeaturePillRow()
+            FeaturePillRow(hazeState)
         }
     }
 }
@@ -213,6 +222,7 @@ fun HomeScreen(
 @Composable
 fun SpatialCard(
     modifier: Modifier = Modifier,
+    hazeState: HazeState,
     onClick: () -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
@@ -229,7 +239,11 @@ fun SpatialCard(
     Box(
         modifier = modifier
             .scale(scale)
-            .background(BgCard, RoundedCornerShape(24.dp))
+            .hazeChild(
+                state = hazeState,
+                shape = RoundedCornerShape(24.dp),
+                style = HazeStyle(blurRadius = 30.dp, tint = BgCard)
+            )
             .border(1.dp, BorderGlass, RoundedCornerShape(24.dp))
             .clickable(
                 interactionSource = interactionSource,
@@ -244,12 +258,14 @@ fun SpatialCard(
 @Composable
 private fun SpatialActionCard(
     modifier: Modifier = Modifier,
+    hazeState: HazeState,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     onClick: () -> Unit,
 ) {
     SpatialCard(
         modifier = modifier.height(100.dp),
+        hazeState = hazeState,
         onClick = onClick
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -261,7 +277,7 @@ private fun SpatialActionCard(
 }
 
 @Composable
-private fun FeaturePillRow() {
+private fun FeaturePillRow(hazeState: HazeState) {
     val features = listOf(
         "Grid Overlay",
         "Palette Extract",
@@ -276,7 +292,11 @@ private fun FeaturePillRow() {
         features.forEach { feature ->
             Box(
                 modifier = Modifier
-                    .background(BgCard, RoundedCornerShape(100.dp))
+                    .hazeChild(
+                        state = hazeState,
+                        shape = RoundedCornerShape(100.dp),
+                        style = HazeStyle(blurRadius = 15.dp, tint = BgCard)
+                    )
                     .border(1.dp, BorderLight, RoundedCornerShape(100.dp))
                     .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {

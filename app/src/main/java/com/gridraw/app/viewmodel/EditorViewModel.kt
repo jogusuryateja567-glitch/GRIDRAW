@@ -136,7 +136,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun applyCrop(bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation) {
+    fun applyCrop(context: Context, bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation) {
         _state.update {
             it.copy(
                 sourceBitmap = bitmap,
@@ -148,6 +148,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         pushHistory()
+        // Automatically save to projects on import
+        saveCurrentProject(context, "Project ${System.currentTimeMillis()}", null)
     }
 
     // ──────────────────────────────────────────────────────────────────────────

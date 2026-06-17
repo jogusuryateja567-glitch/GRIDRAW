@@ -91,8 +91,12 @@ dependencies {
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
-    implementation(libs.androidx.camera.lifecycle)
-    implementation(libs.androidx.camera.view)
+    implementation("androidx.camera:camera-camera2:1.3.3")
+    implementation("androidx.camera:camera-lifecycle:1.3.3")
+    implementation("androidx.camera:camera-view:1.3.3")
+
+    // Haze for Premium Glassmorphism
+    implementation("dev.chrisbanes.haze:haze:0.6.2")
 
     // Palette
     implementation(libs.androidx.palette)
@@ -106,8 +110,7 @@ dependencies {
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)
 
-    // Haze (Glassmorphism)
-    implementation("dev.chrisbanes.haze:haze:0.7.2")
+
 
     debugImplementation(libs.androidx.ui.tooling)
 }

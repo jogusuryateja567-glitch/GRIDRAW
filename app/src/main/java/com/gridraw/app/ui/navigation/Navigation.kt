@@ -48,7 +48,7 @@ fun GridRawNavGraph(navController: NavHostController) {
                     initialPaperSize = state.paperSize,
                     initialOrientation = state.orientation,
                     onConfirm = { b, ps, o ->
-                        editorViewModel.applyCrop(b, ps, o)
+                        editorViewModel.applyCrop(navController.context, b, ps, o)
                         navController.navigate(Screen.Editor.route) {
                             popUpTo(Screen.Home.route)
                         }

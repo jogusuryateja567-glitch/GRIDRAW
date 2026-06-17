@@ -26,6 +26,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.theme.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Floating Tool Dock
@@ -33,14 +36,12 @@ import com.gridraw.app.ui.theme.*
 
 @Composable
 fun ToolDock(
+    hazeState: HazeState,
     visible: Boolean,
-    zoomPercent: Int,
-    canUndo: Boolean,
     showRuler: Boolean,
-    onZoomIn: () -> Unit,
-    onZoomOut: () -> Unit,
+    showGrid: Boolean,
     onFitScreen: () -> Unit,
-    onUndo: () -> Unit,
+    onToggleGrid: () -> Unit,
     onOpenPanel: () -> Unit,
     onToggleRuler: () -> Unit,
     onCameraMode: () -> Unit,
@@ -60,7 +61,11 @@ fun ToolDock(
             Row(
                 modifier = Modifier
                     .padding(bottom = 28.dp)
-                    .background(Color(0xE61A1A1C), RoundedCornerShape(100.dp))
+                    .hazeChild(
+                        state = hazeState,
+                        shape = RoundedCornerShape(100.dp),
+                        style = HazeStyle(blurRadius = 30.dp, tint = BgCard)
+                    )
                     .border(1.dp, BorderGlass, RoundedCornerShape(100.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -77,41 +82,11 @@ fun ToolDock(
                 DockDivider()
 
                 DockButton(
-                    icon = Icons.Rounded.Remove,
+                    icon = Icons.Rounded.GridOn,
+                    isActive = showGrid,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onZoomOut()
-                    }
-                )
-
-                // Zoom display
-                Text(
-                    text = "$zoomPercent%",
-                    color = TextMain,
-                    fontSize = 13.sp,
-                    modifier = Modifier.widthIn(min = 48.dp),
-                    style = MaterialTheme.typography.labelMedium.copy(
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    ),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-
-                DockButton(
-                    icon = Icons.Rounded.Add,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onZoomIn()
-                    }
-                )
-
-                DockDivider()
-
-                DockButton(
-                    icon = Icons.Rounded.Undo,
-                    enabled = canUndo,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onUndo()
+                        onToggleGrid()
                     }
                 )
 

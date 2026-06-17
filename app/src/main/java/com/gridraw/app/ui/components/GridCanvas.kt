@@ -39,6 +39,7 @@ fun GridCanvas(
     panX: Float,
     panY: Float,
     showRuler: Boolean = false,
+    isCameraMode: Boolean = false,
     rulerP1: Pair<Float, Float>? = null,
     rulerP2: Pair<Float, Float>? = null,
 ) {
@@ -86,7 +87,7 @@ fun GridCanvas(
         }) {
             // ── Paper Background ──────────────────────────────────────────────
             drawRect(
-                color = Color.White,
+                color = if (isCameraMode) Color.Transparent else Color.White,
                 topLeft = Offset.Zero,
                 size = Size(canvasW, canvasH)
             )
@@ -99,13 +100,17 @@ fun GridCanvas(
                 val dx = (canvasW - imgW * scale) / 2f
                 val dy = (canvasH - imgH * scale) / 2f
 
-                drawContext.canvas.nativeCanvas.apply {
-                    save()
-                    clipRect(0f, 0f, canvasW, canvasH)
-                    translate(dx, dy)
-                    scale(scale, scale)
-                    drawBitmap(sourceBitmap, 0f, 0f, imagePaint)
-                    restore()
+                withTransform({
+                    translate(left = dx, top = dy)
+                    scale(scale, scale, pivot = Offset.Zero)
+                }) {
+                    val paintToUse = if (isCameraMode) {
+                        val camPaint = Paint()
+                        camPaint.alpha = (255 * 0.5f).toInt() // 50% opacity in AR mode
+                        camPaint.colorFilter = imagePaint.colorFilter
+                        camPaint
+                    } else imagePaint
+                    drawContext.canvas.nativeCanvas.drawBitmap(sourceBitmap, 0f, 0f, paintToUse)
                 }
             }
 

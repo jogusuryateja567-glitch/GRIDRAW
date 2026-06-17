@@ -37,7 +37,7 @@ MERGED from [androidx.compose.animation:animation-core-android:1.7.5] C:\Users\s
 MERGED from [androidx.compose.material:material-ripple-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\b298a8e6b3f8bf104af6991276d3f167\transformed\jetified-material-ripple-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.animation:animation-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\96905a1853d1f8fe0a64566c653c646b\transformed\jetified-animation-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\7f8ca2f945a357f67b189ce2b5b7b610\transformed\jetified-foundation-layout-release\AndroidManifest.xml:2:1-7:12
-MERGED from [dev.chrisbanes.haze:haze-android:0.7.2] C:\Users\surya\.gradle\caches\8.13\transforms\9392408e587c436bce41e177e757ab7e\transformed\jetified-haze-release\AndroidManifest.xml:2:1-7:12
+MERGED from [dev.chrisbanes.haze:haze-android:0.6.2] C:\Users\surya\.gradle\caches\8.13\transforms\8cf8e2c4734d654b1281e2b04c8e4af5\transformed\jetified-haze-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.foundation:foundation-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\e747215c88effa65376209aa4760f3d5\transformed\jetified-foundation-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.ui:ui-tooling-data-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\57fe0a9a4255726333ff676b4c89b6df\transformed\jetified-ui-tooling-data-release\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.compose.ui:ui-unit-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\c1224d4a25a76e84eb1e322b37d6b558\transformed\jetified-ui-unit-release\AndroidManifest.xml:2:1-7:12
@@ -285,8 +285,8 @@ MERGED from [androidx.compose.animation:animation-android:1.7.5] C:\Users\surya\
 MERGED from [androidx.compose.animation:animation-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\96905a1853d1f8fe0a64566c653c646b\transformed\jetified-animation-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\7f8ca2f945a357f67b189ce2b5b7b610\transformed\jetified-foundation-layout-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-layout-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\7f8ca2f945a357f67b189ce2b5b7b610\transformed\jetified-foundation-layout-release\AndroidManifest.xml:5:5-44
-MERGED from [dev.chrisbanes.haze:haze-android:0.7.2] C:\Users\surya\.gradle\caches\8.13\transforms\9392408e587c436bce41e177e757ab7e\transformed\jetified-haze-release\AndroidManifest.xml:5:5-44
-MERGED from [dev.chrisbanes.haze:haze-android:0.7.2] C:\Users\surya\.gradle\caches\8.13\transforms\9392408e587c436bce41e177e757ab7e\transformed\jetified-haze-release\AndroidManifest.xml:5:5-44
+MERGED from [dev.chrisbanes.haze:haze-android:0.6.2] C:\Users\surya\.gradle\caches\8.13\transforms\8cf8e2c4734d654b1281e2b04c8e4af5\transformed\jetified-haze-release\AndroidManifest.xml:5:5-44
+MERGED from [dev.chrisbanes.haze:haze-android:0.6.2] C:\Users\surya\.gradle\caches\8.13\transforms\8cf8e2c4734d654b1281e2b04c8e4af5\transformed\jetified-haze-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\e747215c88effa65376209aa4760f3d5\transformed\jetified-foundation-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.foundation:foundation-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\e747215c88effa65376209aa4760f3d5\transformed\jetified-foundation-release\AndroidManifest.xml:5:5-44
 MERGED from [androidx.compose.ui:ui-tooling-data-android:1.7.5] C:\Users\surya\.gradle\caches\8.13\transforms\57fe0a9a4255726333ff676b4c89b6df\transformed\jetified-ui-tooling-data-release\AndroidManifest.xml:5:5-44

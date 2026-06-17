@@ -27,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.data.models.*
 import com.gridraw.app.ui.theme.*
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeChild
+import dev.chrisbanes.haze.HazeStyle
 
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -57,6 +60,7 @@ fun ControlPanel(
     onPpiChange: (Float) -> Unit,
     onExport: () -> Unit,
     onExtractPalette: () -> Unit,
+    hazeState: HazeState,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
@@ -72,7 +76,11 @@ fun ControlPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .background(Color(0xE61A1A1C), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
+                    .hazeChild(
+                        state = hazeState,
+                        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        style = HazeStyle(blurRadius = 30.dp, tint = BgCard)
+                    )
                     .border(1.dp, BorderGlass, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             ) {
                 // Custom drag handle

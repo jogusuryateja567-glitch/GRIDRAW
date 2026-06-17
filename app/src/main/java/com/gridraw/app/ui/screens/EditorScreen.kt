@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.components.*
 import com.gridraw.app.ui.theme.*
 import com.gridraw.app.viewmodel.EditorViewModel
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.haze
 
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -57,10 +59,13 @@ fun EditorScreen(
         uri?.let { viewModel.loadImageFromUri(context, it) }
     }
 
+    val hazeState = remember { HazeState() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BgRoot)
+            .haze(state = hazeState)
     ) {
         // ── Viewport (pannable + zoomable canvas) ─────────────────────────────
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -84,7 +89,8 @@ fun EditorScreen(
                     .fillMaxSize()
                     .pointerInput(state.paperSize, state.orientation, state.ppi) {
                         detectTransformGestures { centroid, pan, gestureZoom, _ ->
-                            val minZoom = maxOf(screenWidth / canvasW, screenHeight / canvasH)
+                            // Allow zooming out up to 0.1x
+                            val minZoom = 0.1f
                             val newZoom = (zoom * gestureZoom).coerceIn(minZoom, 10f)
                             val zoomFactor = newZoom / zoom
                             
@@ -95,8 +101,19 @@ fun EditorScreen(
                             val scaledH = canvasH * newZoom
                             
                             // Clamp pan bounds so edges don't leave screen
-                            newPanX = newPanX.coerceIn(screenWidth - scaledW, 0f)
-                            newPanY = newPanY.coerceIn(screenHeight - scaledH, 0f)
+                            if (scaledW >= screenWidth) {
+                                newPanX = newPanX.coerceIn(screenWidth - scaledW, 0f)
+                            } else {
+                                // Center the canvas horizontally if smaller than screen
+                                newPanX = (screenWidth - scaledW) / 2f
+                            }
+                            
+                            if (scaledH >= screenHeight) {
+                                newPanY = newPanY.coerceIn(screenHeight - scaledH, 0f)
+                            } else {
+                                // Center the canvas vertically if smaller than screen
+                                newPanY = (screenHeight - scaledH) / 2f
+                            }
                             
                             panX = newPanX
                             panY = newPanY
@@ -115,8 +132,12 @@ fun EditorScreen(
                     }
                 }
         ) {
+            if (state.isCameraMode) {
+                com.gridraw.app.ui.components.CameraPreview(modifier = Modifier.fillMaxSize())
+            }
+
             // If no image: show welcome prompt inside viewport
-            if (!state.hasImage) {
+            if (!state.hasImage && !state.isCameraMode) {
                 WelcomePlaceholder(
                     onImport = { imageLauncher.launch("image/*") }
                 )
@@ -136,6 +157,7 @@ fun EditorScreen(
                     panX = panX,
                     panY = panY,
                     showRuler = state.showRuler,
+                    isCameraMode = state.isCameraMode,
                     rulerP1 = state.rulerPoint1,
                     rulerP2 = state.rulerPoint2,
                 )
@@ -189,18 +211,10 @@ fun EditorScreen(
                 .navigationBarsPadding()
         ) {
             ToolDock(
+                hazeState = hazeState,
                 visible = !state.isPanelOpen,
-                zoomPercent = (zoom * 100).toInt(),
-                canUndo = state.canUndo,
                 showRuler = state.showRuler,
-                onZoomIn = {
-                    zoom = (zoom * 1.2f).coerceAtMost(10f)
-                    viewModel.setViewport(zoom, panX, panY)
-                },
-                onZoomOut = {
-                    zoom = (zoom * 0.8f).coerceAtLeast(0.05f)
-                    viewModel.setViewport(zoom, panX, panY)
-                },
+                showGrid = state.grid.enabled,
                 onFitScreen = {
                     // Reset to fit; will center
                     zoom = 0.5f
@@ -208,7 +222,9 @@ fun EditorScreen(
                     panY = 80f
                     viewModel.setViewport(zoom, panX, panY)
                 },
-                onUndo = { viewModel.undo() },
+                onToggleGrid = {
+                    viewModel.updateGrid(state.grid.copy(enabled = !state.grid.enabled))
+                },
                 onOpenPanel = { viewModel.openPanel() },
                 onToggleRuler = { viewModel.toggleRuler() },
                 onCameraMode = { viewModel.toggleCameraMode() }
@@ -237,7 +253,8 @@ fun EditorScreen(
             onGridChange = { viewModel.updateGrid(it) },
             onPpiChange = { viewModel.setPpi(it) },
             onExport = { viewModel.exportImage(context) {} },
-            onExtractPalette = { viewModel.extractPalette() }
+            onExtractPalette = { viewModel.extractPalette() },
+            hazeState = hazeState
         )
 
         // ── Palette Sheet ─────────────────────────────────────────────────────
