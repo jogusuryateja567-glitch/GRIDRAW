@@ -33,6 +33,7 @@ data class EditorState(
     val hasImage: Boolean = false,
     val sourceBitmap: Bitmap? = null,
     val processedBitmap: Bitmap? = null,
+    val pendingCropBitmap: Bitmap? = null,
 
     val paperSize: PaperSize = PaperSize.A4,
     val orientation: Orientation = Orientation.PORTRAIT,
@@ -105,7 +106,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     // Image Loading
     // ──────────────────────────────────────────────────────────────────────────
 
-    fun loadImageFromUri(context: Context, uri: Uri) {
+    fun loadImageFromUri(context: Context, uri: Uri, onLoaded: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loadingMessage = "Loading image…") }
             try {
@@ -117,23 +118,36 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 if (bitmap != null) {
                     _state.update {
                         it.copy(
-                            sourceBitmap = bitmap,
-                            hasImage = true,
-                            isLoading = false,
-                            cropState = CropState(scale = 1f)
+                            pendingCropBitmap = bitmap,
+                            isLoading = false
                         )
                     }
-                    pushHistory()
-                    showToast("Image loaded", ToastType.SUCCESS)
+                    withContext(Dispatchers.Main) { onLoaded(true) }
                 } else {
                     showToast("Failed to load image", ToastType.ERROR)
                     _state.update { it.copy(isLoading = false) }
+                    withContext(Dispatchers.Main) { onLoaded(false) }
                 }
             } catch (e: Exception) {
                 showToast("Error: ${e.localizedMessage}", ToastType.ERROR)
                 _state.update { it.copy(isLoading = false) }
+                withContext(Dispatchers.Main) { onLoaded(false) }
             }
         }
+    }
+
+    fun applyCrop(bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation) {
+        _state.update {
+            it.copy(
+                sourceBitmap = bitmap,
+                pendingCropBitmap = null,
+                hasImage = true,
+                paperSize = paperSize,
+                orientation = orientation,
+                cropState = CropState(scale = 1f)
+            )
+        }
+        pushHistory()
     }
 
     // ──────────────────────────────────────────────────────────────────────────

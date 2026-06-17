@@ -26,9 +26,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.ui.theme.*
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeStyle
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Floating Tool Dock
@@ -36,7 +33,6 @@ import dev.chrisbanes.haze.HazeStyle
 
 @Composable
 fun ToolDock(
-    hazeState: HazeState,
     visible: Boolean,
     zoomPercent: Int,
     canUndo: Boolean,
@@ -64,7 +60,7 @@ fun ToolDock(
             Row(
                 modifier = Modifier
                     .padding(bottom = 28.dp)
-                    .hazeChild(state = hazeState, shape = RoundedCornerShape(100.dp), style = HazeStyle(blurRadius = 30.dp, tint = BgPanel.copy(alpha = 0.5f)))
+                    .background(Color(0xE61A1A1C), RoundedCornerShape(100.dp))
                     .border(1.dp, BorderGlass, RoundedCornerShape(100.dp))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,

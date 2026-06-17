@@ -27,9 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gridraw.app.data.models.*
 import com.gridraw.app.ui.theme.*
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeStyle
+
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Control Panel — Bottom Sheet with Tabs
@@ -38,7 +36,6 @@ import dev.chrisbanes.haze.HazeStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ControlPanel(
-    hazeState: HazeState,
     isOpen: Boolean,
     activeTab: Int,
     paperSize: PaperSize,
@@ -75,7 +72,7 @@ fun ControlPanel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
-                    .hazeChild(state = hazeState, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), style = HazeStyle(blurRadius = 30.dp, tint = BgPanel.copy(alpha = 0.6f)))
+                    .background(Color(0xE61A1A1C), RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                     .border(1.dp, BorderGlass, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             ) {
                 // Custom drag handle
