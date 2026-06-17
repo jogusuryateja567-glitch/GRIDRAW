@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">GRIDRAW</string>
+    <string name="app_description">Professional Artist Grid Tool</string>
+    <string name="import_image">Import Image</string>
+    <string name="camera_reference">Camera Reference</string>
+    <string name="saved_projects">Saved Projects</string>
+    <string name="export_image">Export Image</string>
+    <string name="grid_configuration">Grid Configuration</string>
+    <string name="image_adjustments">Image Adjustments</string>
+    <string name="canvas_setup">Canvas Setup</string>
+</resources>

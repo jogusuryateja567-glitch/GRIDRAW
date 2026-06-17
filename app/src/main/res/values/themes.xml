@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme -->
+    <style name="Theme.GridRaw" parent="android:Theme.Material.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@color/bg_root</item>
+        <item name="android:statusBarColor">@color/bg_root</item>
+        <item name="android:navigationBarColor">@color/bg_root</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <!-- Splash Screen theme -->
+    <style name="Theme.GridRaw.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg_root</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/bg_root</item>
+        <item name="postSplashScreenTheme">@style/Theme.GridRaw</item>
+    </style>
+</resources>
