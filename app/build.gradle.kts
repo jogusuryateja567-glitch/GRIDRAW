@@ -5,6 +5,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Move build output outside OneDrive to prevent file-locking during sync
+layout.buildDirectory.set(file("C:\\GridrawBuild\\app"))
+
+
 android {
     namespace = "com.gridraw.app"
     compileSdk = 35

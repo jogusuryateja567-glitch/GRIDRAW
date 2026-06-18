@@ -1,15 +1,11 @@
 package com.gridraw.app.ui.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.Spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,9 +30,10 @@ import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
 
-// ─────────────────────────────────────────────────────────────────────────────
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Control Panel — Bottom Sheet with Tabs
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +48,9 @@ fun ControlPanel(
     grid: GridConfig,
     ppi: Float,
     hasImage: Boolean,
+    isCameraMode: Boolean,
+    cameraGridOpacity: Float,
+    cameraImageOpacity: Float,
     onClose: () -> Unit,
     onTabChange: (Int) -> Unit,
     onPaperSizeChange: (PaperSize) -> Unit,
@@ -62,9 +62,11 @@ fun ControlPanel(
     onPpiChange: (Float) -> Unit,
     onExport: () -> Unit,
     onExtractPalette: () -> Unit,
+    onCameraGridOpacityChange: (Float) -> Unit,
+    onCameraImageOpacityChange: (Float) -> Unit,
     hazeState: HazeState,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
     if (isOpen) {
         ModalBottomSheet(
@@ -72,10 +74,7 @@ fun ControlPanel(
             sheetState = sheetState,
             containerColor = Color.Transparent,
             contentColor = TextMain,
-            // FIX: dragHandle null so we draw our own inside the glass container
-            dragHandle = null,
-            // Ensure sheet has a real min height
-            modifier = Modifier.fillMaxWidth()
+            dragHandle = null
         ) {
             Column(
                 modifier = Modifier
@@ -86,17 +85,13 @@ fun ControlPanel(
                         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                         style = HazeStyle(blurRadius = 30.dp, tint = BgCard)
                     )
-                    .border(
-                        1.dp,
-                        BorderGlass,
-                        RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-                    )
+                    .border(1.dp, BorderGlass, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
             ) {
                 // Drag handle
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
-                            .padding(top = 12.dp, bottom = 4.dp)
+                            .padding(top = 12.dp, bottom = 8.dp)
                             .width(40.dp)
                             .height(5.dp)
                             .clip(CircleShape)
@@ -107,49 +102,49 @@ fun ControlPanel(
                 // Tab Row
                 PanelTabRow(activeTab = activeTab, onTabChange = onTabChange)
 
-                HorizontalDivider(color = BorderLight, thickness = 0.5.dp)
+                HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
-                // Tab Content with AnimatedContent for smooth tab transitions
-                AnimatedContent(
-                    targetState = activeTab,
-                    transitionSpec = {
-                        val dir = if (targetState > initialState) 1 else -1
-                        (slideInHorizontally { dir * it / 4 } + fadeIn()) togetherWith
-                                (slideOutHorizontally { -dir * it / 4 } + fadeOut())
-                    },
+                // Tab Content
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 300.dp, max = 500.dp),
-                    label = "tab_content"
-                ) { tab ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        when (tab) {
-                            0 -> CanvasTab(
-                                paperSize = paperSize,
-                                orientation = orientation,
-                                customWidthMm = customWidthMm,
-                                customHeightMm = customHeightMm,
-                                ppi = ppi,
-                                onPaperSizeChange = onPaperSizeChange,
-                                onOrientationToggle = onOrientationToggle,
-                                onCustomDimsChange = onCustomDimsChange,
-                                onPpiChange = onPpiChange
-                            )
-                            1 -> ImageTab(
-                                filters = filters,
-                                hasImage = hasImage,
-                                onFiltersChange = onFiltersChange,
-                                onFiltersReset = onFiltersReset,
-                                onExtractPalette = onExtractPalette
-                            )
-                            2 -> GridTab(grid = grid, onGridChange = onGridChange)
-                            3 -> ExportTab(hasImage = hasImage, onExport = onExport)
-                        }
+                        .heightIn(max = 500.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                ) {
+                    when (activeTab) {
+                        0 -> CanvasTab(
+                            paperSize = paperSize,
+                            orientation = orientation,
+                            customWidthMm = customWidthMm,
+                            customHeightMm = customHeightMm,
+                            ppi = ppi,
+                            onPaperSizeChange = onPaperSizeChange,
+                            onOrientationToggle = onOrientationToggle,
+                            onCustomDimsChange = onCustomDimsChange,
+                            onPpiChange = onPpiChange
+                        )
+                        1 -> ImageTab(
+                            filters = filters,
+                            hasImage = hasImage,
+                            onFiltersChange = onFiltersChange,
+                            onFiltersReset = onFiltersReset,
+                            onExtractPalette = onExtractPalette
+                        )
+                        2 -> GridTab(
+                            grid = grid,
+                            onGridChange = onGridChange
+                        )
+                        3 -> CameraTab(
+                            cameraGridOpacity = cameraGridOpacity,
+                            cameraImageOpacity = cameraImageOpacity,
+                            onCameraGridOpacityChange = onCameraGridOpacityChange,
+                            onCameraImageOpacityChange = onCameraImageOpacityChange
+                        )
+                        4 -> ExportTab(
+                            hasImage = hasImage,
+                            onExport = onExport
+                        )
                     }
                 }
             }
@@ -165,16 +160,16 @@ private val TABS = listOf(
     TabItem(Icons.Rounded.GridView, "Canvas"),
     TabItem(Icons.Rounded.Tune, "Image"),
     TabItem(Icons.Rounded.GridOn, "Grid"),
+    TabItem(Icons.Rounded.PhotoCamera, "Camera"),
     TabItem(Icons.Rounded.FileDownload, "Export"),
 )
 
 @Composable
 private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
-    val haptic = LocalHapticFeedback.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         TABS.forEachIndexed { index, tab ->
@@ -182,37 +177,25 @@ private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .weight(1f)
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onTabChange(index)
-                    }
-                    .padding(horizontal = 8.dp, vertical = 10.dp)
+                    .clickable { onTabChange(index) }
+                    .padding(horizontal = 10.dp, vertical = 10.dp)
             ) {
                 Icon(
                     imageVector = tab.icon,
                     contentDescription = tab.label,
                     tint = if (selected) Color.White else TextMuted,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = tab.label,
                     color = if (selected) Color.White else TextMuted,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                 )
-                Spacer(Modifier.height(4.dp))
-                // Animated indicator dot
-                AnimatedVisibility(
-                    visible = selected,
-                    enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                    exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top)
-                ) {
+                if (selected) {
+                    Spacer(Modifier.height(2.dp))
                     Box(
                         Modifier
                             .width(16.dp)
@@ -221,7 +204,6 @@ private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
                             .background(Color.White)
                     )
                 }
-                if (!selected) Spacer(Modifier.height(2.dp))
             }
         }
     }
@@ -248,61 +230,52 @@ private fun CanvasTab(
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         SectionHeader("Paper Size")
 
-        // FIX: LazyRow prevents overflow on small screens
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val sizes = PaperSize.entries.filter { it != PaperSize.CUSTOM }
-            items(sizes) { size ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            PaperSize.entries.filter { it != PaperSize.CUSTOM }.forEach { size ->
                 val selected = paperSize == size
                 Box(
                     modifier = Modifier
-                        .width(64.dp)
+                        .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (selected) Color.White.copy(alpha = 0.15f) else BgInput)
-                        .border(1.dp, if (selected) Color.White else BorderLight, RoundedCornerShape(10.dp))
+                        .background(if (selected) Color.White else BgInput)
+                        .border(1.dp, if (selected) Color.Transparent else BorderLight, RoundedCornerShape(10.dp))
                         .clickable { onPaperSizeChange(size) }
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 10.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = size.name,
-                        color = if (selected) Color.White else TextMuted,
+                        color = if (selected) Color.Black else TextMuted,
                         fontSize = 13.sp,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                     )
                 }
             }
         }
 
-        // Custom dimensions button
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (paperSize == PaperSize.CUSTOM) Color.White.copy(alpha = 0.15f) else BgInput)
-                .border(1.dp, if (paperSize == PaperSize.CUSTOM) Color.White else BorderLight, RoundedCornerShape(10.dp))
+                .background(if (paperSize == PaperSize.CUSTOM) Color.White else BgInput)
+                .border(1.dp, if (paperSize == PaperSize.CUSTOM) Color.Transparent else BorderLight, RoundedCornerShape(10.dp))
                 .clickable { onPaperSizeChange(PaperSize.CUSTOM) }
-                .padding(14.dp),
+                .padding(12.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
                 "Custom Dimensions",
-                color = if (paperSize == PaperSize.CUSTOM) Color.White else TextMuted,
-                fontSize = 13.sp
+                color = if (paperSize == PaperSize.CUSTOM) Color.Black else TextMuted,
+                fontSize = 13.sp,
+                fontWeight = if (paperSize == PaperSize.CUSTOM) FontWeight.SemiBold else FontWeight.Normal
             )
         }
 
-        AnimatedVisibility(
-            visible = paperSize == PaperSize.CUSTOM,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
+        AnimatedVisibility(visible = paperSize == PaperSize.CUSTOM) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     value = customW,
-                    onValueChange = {
-                        customW = it
-                        it.toFloatOrNull()?.let { v -> onCustomDimsChange(v, customH.toFloatOrNull() ?: 200f) }
-                    },
+                    onValueChange = { customW = it; it.toFloatOrNull()?.let { v -> onCustomDimsChange(v, customH.toFloatOrNull() ?: 200f) } },
                     label = { Text("Width (mm)") },
                     modifier = Modifier.weight(1f),
                     colors = gridTextFieldColors(),
@@ -310,10 +283,7 @@ private fun CanvasTab(
                 )
                 OutlinedTextField(
                     value = customH,
-                    onValueChange = {
-                        customH = it
-                        it.toFloatOrNull()?.let { v -> onCustomDimsChange(customW.toFloatOrNull() ?: 200f, v) }
-                    },
+                    onValueChange = { customH = it; it.toFloatOrNull()?.let { v -> onCustomDimsChange(customW.toFloatOrNull() ?: 200f, v) } },
                     label = { Text("Height (mm)") },
                     modifier = Modifier.weight(1f),
                     colors = gridTextFieldColors(),
@@ -330,38 +300,34 @@ private fun CanvasTab(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(if (sel) Color.White.copy(alpha = 0.15f) else BgInput)
-                        .border(1.dp, if (sel) Color.White else BorderLight, RoundedCornerShape(10.dp))
+                        .background(if (sel) Color.White else BgInput)
+                        .border(1.dp, if (sel) Color.Transparent else BorderLight, RoundedCornerShape(10.dp))
                         .clickable { if (orientation != ori) onOrientationToggle() }
-                        .padding(14.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        imageVector = if (ori == Orientation.PORTRAIT)
-                            Icons.Rounded.StayCurrentPortrait else Icons.Rounded.StayCurrentLandscape,
+                        imageVector = if (ori == Orientation.PORTRAIT) Icons.Rounded.StayCurrentPortrait else Icons.Rounded.StayCurrentLandscape,
                         contentDescription = ori.name,
-                        tint = if (sel) Color.White else TextMuted,
+                        tint = if (sel) Color.Black else TextMuted,
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         ori.name.lowercase().replaceFirstChar { it.uppercase() },
-                        color = if (sel) Color.White else TextMuted,
+                        color = if (sel) Color.Black else TextMuted,
                         fontSize = 13.sp,
-                        fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal
+                        fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal
                     )
                 }
             }
         }
 
-        SectionHeader("Screen PPI (Calibration)")
+        SectionHeader("Screen PPI (Real-size Calibration)")
         OutlinedTextField(
             value = ppiText,
-            onValueChange = {
-                ppiText = it
-                it.toFloatOrNull()?.let { v -> onPpiChange(v) }
-            },
+            onValueChange = { ppiText = it; it.toFloatOrNull()?.let { v -> onPpiChange(v) } },
             label = { Text("Pixels per inch") },
             modifier = Modifier.fillMaxWidth(),
             colors = gridTextFieldColors(),
@@ -373,7 +339,7 @@ private fun CanvasTab(
             }
         )
         Text(
-            "Hold a physical ruler against the screen to calibrate.",
+            "Calibrate PPI so grid cells match real mm on your screen. Use a physical ruler.",
             color = TextDim,
             fontSize = 11.sp,
             lineHeight = 16.sp
@@ -397,7 +363,7 @@ private fun ImageTab(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SectionHeader("Adjustments")
+            SectionHeader("Adjustments", modifier = Modifier)
             TextButton(onClick = onFiltersReset) {
                 Text("Reset All", color = TextMuted, fontSize = 12.sp)
             }
@@ -417,6 +383,7 @@ private fun ImageTab(
             displayValue = "${filters.brightness.toInt()}%",
             onValueChange = { onFiltersChange(filters.copy(brightness = it)) }
         )
+
         StyledSlider(
             label = "Contrast",
             value = filters.contrast,
@@ -424,6 +391,7 @@ private fun ImageTab(
             displayValue = "${filters.contrast.toInt()}%",
             onValueChange = { onFiltersChange(filters.copy(contrast = it)) }
         )
+
         StyledSlider(
             label = "Saturation",
             value = filters.saturation,
@@ -431,25 +399,24 @@ private fun ImageTab(
             displayValue = "${filters.saturation.toInt()}%",
             onValueChange = { onFiltersChange(filters.copy(saturation = it)) }
         )
+
         StyledSlider(
-            label = "Blur (Simplify)",
+            label = "Blur",
             value = filters.blur,
             range = 0f..10f,
-            displayValue = "${"%.1f".format(filters.blur)}px",
+            displayValue = String.format("%.1fpx", filters.blur),
             onValueChange = { onFiltersChange(filters.copy(blur = it)) }
         )
 
-        HorizontalDivider(color = BorderLight, thickness = 0.5.dp)
+        HorizontalDivider(color = BorderLight)
 
         Button(
             onClick = onExtractPalette,
             enabled = hasImage,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White.copy(alpha = 0.12f),
-                contentColor = Color.White,
-                disabledContainerColor = Color.White.copy(alpha = 0.05f),
-                disabledContentColor = TextDim
+                contentColor = Color.White
             ),
             shape = RoundedCornerShape(12.dp)
         ) {
@@ -480,77 +447,59 @@ private fun GridTab(
             onToggle = { onGridChange(grid.copy(enabled = !grid.enabled)) }
         )
 
-        AnimatedVisibility(
-            visible = grid.enabled,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    OutlinedTextField(
-                        value = sizeText,
-                        onValueChange = {
-                            sizeText = it
-                            it.toFloatOrNull()?.let { v -> onGridChange(grid.copy(sizeMm = v)) }
-                        },
-                        label = { Text("Cell Size (mm)") },
-                        modifier = Modifier.weight(1f),
-                        colors = gridTextFieldColors(),
-                        singleLine = true
-                    )
-                    OutlinedTextField(
-                        value = thickText,
-                        onValueChange = {
-                            thickText = it
-                            it.toFloatOrNull()?.let { v -> onGridChange(grid.copy(thickness = v)) }
-                        },
-                        label = { Text("Line Width") },
-                        modifier = Modifier.weight(1f),
-                        colors = gridTextFieldColors(),
-                        singleLine = true
-                    )
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedTextField(
+                value = sizeText,
+                onValueChange = { sizeText = it; it.toFloatOrNull()?.let { v -> onGridChange(grid.copy(sizeMm = v)) } },
+                label = { Text("Cell Size (mm)") },
+                modifier = Modifier.weight(1f),
+                colors = gridTextFieldColors(),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = thickText,
+                onValueChange = { thickText = it; it.toFloatOrNull()?.let { v -> onGridChange(grid.copy(thickness = v)) } },
+                label = { Text("Thickness (px)") },
+                modifier = Modifier.weight(1f),
+                colors = gridTextFieldColors(),
+                singleLine = true
+            )
+        }
 
-                StyledSlider(
-                    label = "Opacity",
-                    value = grid.opacityPct.toFloat(),
-                    range = 10f..100f,
-                    displayValue = "${grid.opacityPct}%",
-                    onValueChange = { onGridChange(grid.copy(opacityPct = it.toInt())) }
-                )
+        StyledSlider(
+            label = "Opacity",
+            value = grid.opacityPct.toFloat(),
+            range = 10f..100f,
+            displayValue = "${grid.opacityPct}%",
+            onValueChange = { onGridChange(grid.copy(opacityPct = it.toInt())) }
+        )
 
-                SectionHeader("Grid Color")
-                // FIX: 44.dp tap targets for all color swatches
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf(
-                        0xFF5B8DFF, 0xFFFF4D6A, 0xFF00E676,
-                        0xFFFFBE00, 0xFFFFFFFF, 0xFF000000
-                    ).forEach { hex ->
-                        val isSelected = grid.colorHex == hex
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Color(
-                                        red = ((hex shr 16) and 0xFF).toInt(),
-                                        green = ((hex shr 8) and 0xFF).toInt(),
-                                        blue = (hex and 0xFF).toInt()
-                                    )
-                                )
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) Color.White else Color.White.copy(alpha = 0.2f),
-                                    shape = CircleShape
-                                )
-                                .clickable { onGridChange(grid.copy(colorHex = hex)) }
+        SectionHeader("Grid Color")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(0xFF5B8DFF, 0xFFFF4D6A, 0xFF00E676, 0xFFFFBE00, 0xFFFFFFFF, 0xFF000000).forEach { hex ->
+                val isSelected = grid.colorHex == hex
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Color(
+                                red = ((hex shr 16) and 0xFF).toInt(),
+                                green = ((hex shr 8) and 0xFF).toInt(),
+                                blue = (hex and 0xFF).toInt()
+                            )
                         )
-                    }
-                }
+                        .border(
+                            width = if (isSelected) 3.dp else 0.dp,
+                            color = if (isSelected) Color.White else Color.Transparent,
+                            shape = CircleShape
+                        )
+                        .clickable { onGridChange(grid.copy(colorHex = hex)) }
+                )
             }
         }
 
-        HorizontalDivider(color = BorderLight, thickness = 0.5.dp)
+        HorizontalDivider(color = BorderLight)
         SectionHeader("Overlays")
 
         ToggleRow("Grid Labels (A1, B2…)", Icons.Rounded.Label, grid.showLabels) {
@@ -572,11 +521,7 @@ private fun GridTab(
             onGridChange(grid.copy(showSymmetryRadial = !grid.showSymmetryRadial))
         }
 
-        AnimatedVisibility(
-            visible = grid.showSymmetryRadial,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
+        AnimatedVisibility(visible = grid.showSymmetryRadial) {
             StyledSlider(
                 label = "Segments",
                 value = grid.symmetrySegments.toFloat(),
@@ -588,10 +533,73 @@ private fun GridTab(
     }
 }
 
+// ── Camera Tab ────────────────────────────────────────────────────────────────
+
+@Composable
+private fun CameraTab(
+    cameraGridOpacity: Float,
+    cameraImageOpacity: Float,
+    onCameraGridOpacityChange: (Float) -> Unit,
+    onCameraImageOpacityChange: (Float) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SectionHeader("AR Camera Settings")
+
+        // Info card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(BgInput)
+                .padding(14.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(Icons.Rounded.PhotoCamera, null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                Text(
+                    "These settings only apply when AR Camera mode is active. " +
+                    "Normal grid settings are separate.",
+                    color = TextDim,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        StyledSlider(
+            label = "Grid Opacity in Camera",
+            value = cameraGridOpacity * 100f,
+            range = 0f..100f,
+            displayValue = "${(cameraGridOpacity * 100).toInt()}%",
+            onValueChange = { onCameraGridOpacityChange(it / 100f) }
+        )
+
+        StyledSlider(
+            label = "Image Overlay Opacity",
+            value = cameraImageOpacity * 100f,
+            range = 0f..100f,
+            displayValue = "${(cameraImageOpacity * 100).toInt()}%",
+            onValueChange = { onCameraImageOpacityChange(it / 100f) }
+        )
+
+        Text(
+            "Tip: Set Image Overlay to 0% for clean camera-only view, or 100% for full reference overlay.",
+            color = TextDim,
+            fontSize = 11.sp,
+            lineHeight = 16.sp
+        )
+    }
+}
+
 // ── Export Tab ────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ExportTab(hasImage: Boolean, onExport: () -> Unit) {
+private fun ExportTab(
+    hasImage: Boolean,
+    onExport: () -> Unit,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -601,12 +609,12 @@ private fun ExportTab(hasImage: Boolean, onExport: () -> Unit) {
         Icon(
             imageVector = Icons.Rounded.FileDownload,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.7f),
-            modifier = Modifier.size(44.dp)
+            tint = Color.White,
+            modifier = Modifier.size(48.dp)
         )
 
         Text(
-            "Export a high-resolution image with your grid overlay applied.",
+            "Export your reference image with the grid baked in at full resolution.",
             color = TextMuted,
             fontSize = 14.sp,
             lineHeight = 20.sp
@@ -617,46 +625,37 @@ private fun ExportTab(hasImage: Boolean, onExport: () -> Unit) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(BgInput)
-                .border(1.dp, BorderLight, RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                InfoRow("Format", "JPEG · 95% quality")
-                InfoRow("Resolution", "Full paper size at set PPI")
-                InfoRow("Save Location", "Pictures/GRIDRAW")
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                InfoRow("Format", "JPEG, 95% quality")
+                InfoRow("Resolution", "Full paper size at calibrated PPI")
+                InfoRow("Save to", "Pictures/GRIDRAW")
             }
         }
 
-        if (!hasImage) {
-            Text(
-                "Import an image first to enable export.",
-                color = TextDim,
-                fontSize = 12.sp
-            )
-        }
-
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(8.dp))
 
         Button(
             onClick = onExport,
             enabled = hasImage,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Color.White,
-                contentColor = Color.Black,
-                disabledContainerColor = Color.White.copy(alpha = 0.15f),
-                disabledContentColor = TextDim
+                disabledContainerColor = Color.White.copy(alpha = 0.2f)
             ),
             shape = RoundedCornerShape(14.dp)
         ) {
-            Icon(Icons.Rounded.FileDownload, null, modifier = Modifier.size(20.dp))
+            Icon(Icons.Rounded.FileDownload, null, modifier = Modifier.size(20.dp), tint = Color.Black)
             Spacer(Modifier.width(10.dp))
-            Text("Save to Gallery", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            Text("Save to Gallery", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.Black)
         }
     }
 }
 
-// ── Shared Helper Composables ─────────────────────────────────────────────────
+// ── Helper Composables ────────────────────────────────────────────────────────
 
 @Composable
 fun SectionHeader(title: String, modifier: Modifier = Modifier) {
@@ -665,7 +664,7 @@ fun SectionHeader(title: String, modifier: Modifier = Modifier) {
         color = TextMuted,
         fontSize = 10.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = 1.2.sp,
+        letterSpacing = 1.sp,
         modifier = modifier
     )
 }
@@ -678,17 +677,12 @@ fun ToggleRow(
     onToggle: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    // FIX: Switch onCheckedChange was duplicating the click — removed, Row handles it
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(if (enabled) Color.White.copy(alpha = 0.1f) else BgInput)
-            .border(
-                1.dp,
-                if (enabled) Color.White.copy(alpha = 0.4f) else BorderLight,
-                RoundedCornerShape(12.dp)
-            )
+            .border(1.dp, if (enabled) Color.White.copy(alpha = 0.3f) else BorderLight, RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
@@ -696,7 +690,7 @@ fun ToggleRow(
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 onToggle()
             }
-            .padding(horizontal = 16.dp, vertical = 13.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -717,13 +711,12 @@ fun ToggleRow(
                 fontWeight = if (enabled) FontWeight.Medium else FontWeight.Normal
             )
         }
-        // FIX: Switch is read-only display — interaction handled by the Row click
         Switch(
             checked = enabled,
-            onCheckedChange = null,
+            onCheckedChange = { onToggle() },
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
-                checkedTrackColor = Color(0xFF32D74B),
+                checkedThumbColor = Color.Black,
+                checkedTrackColor = Color.White,
                 uncheckedThumbColor = TextMuted,
                 uncheckedTrackColor = BgInputHover
             )
@@ -739,35 +732,23 @@ fun StyledSlider(
     displayValue: String,
     onValueChange: (Float) -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(label, color = TextMuted, fontSize = 13.sp)
-            Text(
-                displayValue,
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text(displayValue, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(6.dp))
         Slider(
             value = value,
-            onValueChange = {
-                onValueChange(it)
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            },
+            onValueChange = onValueChange,
             valueRange = range,
             colors = SliderDefaults.colors(
                 thumbColor = Color.White,
                 activeTrackColor = Color.White,
-                inactiveTrackColor = BgInputHover,
-                activeTickColor = Color.Transparent,
-                inactiveTickColor = Color.Transparent
+                inactiveTrackColor = BgInputHover
             )
         )
     }
@@ -786,9 +767,9 @@ fun InfoRow(key: String, value: String) {
 
 @Composable
 fun gridTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Color.White.copy(alpha = 0.6f),
+    focusedBorderColor = Color.White.copy(alpha = 0.5f),
     unfocusedBorderColor = BorderLight,
-    focusedLabelColor = Color.White.copy(alpha = 0.6f),
+    focusedLabelColor = Color.White.copy(alpha = 0.7f),
     unfocusedLabelColor = TextMuted,
     cursorColor = Color.White,
     focusedTextColor = TextMain,
