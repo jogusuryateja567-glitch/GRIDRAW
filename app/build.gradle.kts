@@ -5,8 +5,10 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// Move build output outside OneDrive to prevent file-locking during sync
-layout.buildDirectory.set(file("C:\\GridrawBuild\\app"))
+// Move build output outside OneDrive locally, but keep default in CI
+if (System.getenv("CI") != "true" && System.getProperty("os.name").lowercase().contains("windows")) {
+    layout.buildDirectory.set(file("C:\\GridrawBuild\\app"))
+}
 
 
 android {
