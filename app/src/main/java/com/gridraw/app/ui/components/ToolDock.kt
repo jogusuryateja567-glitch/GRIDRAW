@@ -36,6 +36,7 @@ fun ToolDock(
     visible: Boolean,
     showRuler: Boolean,
     showGrid: Boolean,
+    isCameraMode: Boolean = false,
     onFitScreen: () -> Unit,
     onToggleGrid: () -> Unit,
     onOpenPanel: () -> Unit,
@@ -111,6 +112,7 @@ fun ToolDock(
                 DockButton(
                     icon = Icons.Rounded.PhotoCamera,
                     label = "AR",
+                    isActive = isCameraMode,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onCameraMode()
