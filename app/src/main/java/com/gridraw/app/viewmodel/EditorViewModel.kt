@@ -62,7 +62,10 @@ data class EditorState(
     val extractedPalette: List<Long> = emptyList(),
     val toastMessage: String? = null,
     val toastType: ToastType = ToastType.INFO,
-    val canUndo: Boolean = false
+    val canUndo: Boolean = false,
+    // AR Camera overlay controls (independent of normal grid settings)
+    val cameraGridOpacity: Float = 0.7f,
+    val cameraImageOpacity: Float = 0.5f
 )
 
 enum class ToastType { INFO, SUCCESS, WARNING, ERROR }
@@ -239,6 +242,14 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun toggleCameraMode() {
         _state.update { it.copy(isCameraMode = !it.isCameraMode) }
+    }
+
+    fun setCameraGridOpacity(opacity: Float) {
+        _state.update { it.copy(cameraGridOpacity = opacity.coerceIn(0f, 1f)) }
+    }
+
+    fun setCameraImageOpacity(opacity: Float) {
+        _state.update { it.copy(cameraImageOpacity = opacity.coerceIn(0f, 1f)) }
     }
 
     fun toggleRuler() {
