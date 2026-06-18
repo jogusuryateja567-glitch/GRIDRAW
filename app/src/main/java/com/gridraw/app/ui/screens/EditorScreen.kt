@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.*
@@ -31,7 +32,6 @@ import com.gridraw.app.viewmodel.EditorViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.haze
 
-
 // ──────────────────────────────────────────────────────────────────────────────
 // EditorScreen — Main Canvas + Controls
 // ──────────────────────────────────────────────────────────────────────────────
@@ -43,9 +43,8 @@ fun EditorScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
 
-    // Viewport gesture state
+    // Smooth animated viewport state
     var zoom by remember { mutableFloatStateOf(state.viewportZoom.coerceAtLeast(0.05f)) }
     var panX by remember { mutableFloatStateOf(state.viewportOffsetX) }
     var panY by remember { mutableFloatStateOf(state.viewportOffsetY) }
@@ -59,113 +58,117 @@ fun EditorScreen(
         uri?.let { viewModel.loadImageFromUri(context, it) }
     }
 
+    // hazeState is attached ONLY to the background canvas layer, not the whole screen
     val hazeState = remember { HazeState() }
 
+    // Root container — pure black, no haze here
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BgRoot)
-            .haze(state = hazeState)
     ) {
-        // ── Viewport (pannable + zoomable canvas) ─────────────────────────────
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-            val screenWidth = constraints.maxWidth.toFloat()
-            val screenHeight = constraints.maxHeight.toFloat()
-            
-            val ppMm = state.ppi / 25.4f
-            val (rawW, rawH) = when (state.paperSize) {
-                com.gridraw.app.data.models.PaperSize.CUSTOM -> Pair(state.customWidthMm, state.customHeightMm)
-                else -> {
-                    val base = Pair(state.paperSize.widthMm, state.paperSize.heightMm)
-                    if (state.orientation == com.gridraw.app.data.models.Orientation.LANDSCAPE) Pair(base.second, base.first)
-                    else base
-                }
-            }
-            val canvasW = (rawW * ppMm).coerceAtLeast(100f)
-            val canvasH = (rawH * ppMm).coerceAtLeast(100f)
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .pointerInput(state.paperSize, state.orientation, state.ppi) {
-                        detectTransformGestures { centroid, pan, gestureZoom, _ ->
-                            // Allow zooming out up to 0.1x
-                            val minZoom = 0.1f
-                            val newZoom = (zoom * gestureZoom).coerceIn(minZoom, 10f)
-                            val zoomFactor = newZoom / zoom
-                            
-                            var newPanX = centroid.x - (centroid.x - panX) * zoomFactor + pan.x
-                            var newPanY = centroid.y - (centroid.y - panY) * zoomFactor + pan.y
-                            
-                            val scaledW = canvasW * newZoom
-                            val scaledH = canvasH * newZoom
-                            
-                            // Clamp pan bounds so edges don't leave screen
-                            if (scaledW >= screenWidth) {
-                                newPanX = newPanX.coerceIn(screenWidth - scaledW, 0f)
-                            } else {
-                                // Center the canvas horizontally if smaller than screen
-                                newPanX = (screenWidth - scaledW) / 2f
-                            }
-                            
-                            if (scaledH >= screenHeight) {
-                                newPanY = newPanY.coerceIn(screenHeight - scaledH, 0f)
-                            } else {
-                                // Center the canvas vertically if smaller than screen
-                                newPanY = (screenHeight - scaledH) / 2f
-                            }
-                            
-                            panX = newPanX
-                            panY = newPanY
-                            zoom = newZoom
-                            viewModel.setViewport(zoom, panX, panY)
-                        }
-                    }
-                .pointerInput(state.showRuler) {
-                    if (state.showRuler) {
-                        detectTapGestures { offset ->
-                            // Convert screen to canvas coordinates
-                            val cx = (offset.x - panX) / zoom
-                            val cy = (offset.y - panY) / zoom
-                            viewModel.setRulerPoint(cx, cy)
-                        }
-                    }
-                }
+        // ── Layer 1: Canvas (this is the HAZE SOURCE — blurring happens from this layer)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .haze(state = hazeState) // Only the canvas layer feeds into haze
         ) {
-            if (state.isCameraMode) {
-                com.gridraw.app.ui.components.CameraPreview(modifier = Modifier.fillMaxSize())
-            }
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val screenWidth = constraints.maxWidth.toFloat()
+                val screenHeight = constraints.maxHeight.toFloat()
 
-            // If no image: show welcome prompt inside viewport
-            if (!state.hasImage && !state.isCameraMode) {
-                WelcomePlaceholder(
-                    onImport = { imageLauncher.launch("image/*") }
-                )
-            } else {
-                // Grid Canvas
-                GridCanvas(
-                    modifier = Modifier.fillMaxSize(),
-                    sourceBitmap = state.sourceBitmap,
-                    filters = state.filters,
-                    grid = state.grid,
-                    paperSize = state.paperSize,
-                    orientation = state.orientation,
-                    customWidthMm = state.customWidthMm,
-                    customHeightMm = state.customHeightMm,
-                    ppi = state.ppi,
-                    zoom = zoom,
-                    panX = panX,
-                    panY = panY,
-                    showRuler = state.showRuler,
-                    isCameraMode = state.isCameraMode,
-                    rulerP1 = state.rulerPoint1,
-                    rulerP2 = state.rulerPoint2,
-                )
-            }
+                val ppMm = state.ppi / 25.4f
+                val (rawW, rawH) = when (state.paperSize) {
+                    com.gridraw.app.data.models.PaperSize.CUSTOM -> Pair(state.customWidthMm, state.customHeightMm)
+                    else -> {
+                        val base = Pair(state.paperSize.widthMm, state.paperSize.heightMm)
+                        if (state.orientation == com.gridraw.app.data.models.Orientation.LANDSCAPE) Pair(base.second, base.first)
+                        else base
+                    }
+                }
+                val canvasW = (rawW * ppMm).coerceAtLeast(100f)
+                val canvasH = (rawH * ppMm).coerceAtLeast(100f)
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pointerInput(state.paperSize, state.orientation, state.ppi) {
+                            detectTransformGestures { centroid, pan, gestureZoom, _ ->
+                                val minZoom = 0.1f
+                                val newZoom = (zoom * gestureZoom).coerceIn(minZoom, 10f)
+                                val zoomFactor = newZoom / zoom
+
+                                var newPanX = centroid.x - (centroid.x - panX) * zoomFactor + pan.x
+                                var newPanY = centroid.y - (centroid.y - panY) * zoomFactor + pan.y
+
+                                val scaledW = canvasW * newZoom
+                                val scaledH = canvasH * newZoom
+
+                                if (scaledW >= screenWidth) {
+                                    newPanX = newPanX.coerceIn(screenWidth - scaledW, 0f)
+                                } else {
+                                    newPanX = (screenWidth - scaledW) / 2f
+                                }
+
+                                if (scaledH >= screenHeight) {
+                                    newPanY = newPanY.coerceIn(screenHeight - scaledH, 0f)
+                                } else {
+                                    newPanY = (screenHeight - scaledH) / 2f
+                                }
+
+                                panX = newPanX
+                                panY = newPanY
+                                zoom = newZoom
+                                viewModel.setViewport(zoom, panX, panY)
+                            }
+                        }
+                        .pointerInput(state.showRuler) {
+                            if (state.showRuler) {
+                                detectTapGestures { offset ->
+                                    val cx = (offset.x - panX) / zoom
+                                    val cy = (offset.y - panY) / zoom
+                                    viewModel.setRulerPoint(cx, cy)
+                                }
+                            }
+                        }
+                ) {
+                    if (state.isCameraMode) {
+                        com.gridraw.app.ui.components.CameraPreview(modifier = Modifier.fillMaxSize())
+                    }
+
+                    if (!state.hasImage && !state.isCameraMode) {
+                        WelcomePlaceholder(
+                            onImport = { imageLauncher.launch("image/*") }
+                        )
+                    } else {
+                        GridCanvas(
+                            modifier = Modifier.fillMaxSize(),
+                            sourceBitmap = state.sourceBitmap,
+                            filters = state.filters,
+                            grid = state.grid,
+                            paperSize = state.paperSize,
+                            orientation = state.orientation,
+                            customWidthMm = state.customWidthMm,
+                            customHeightMm = state.customHeightMm,
+                            ppi = state.ppi,
+                            zoom = zoom,
+                            panX = panX,
+                            panY = panY,
+                            showRuler = state.showRuler,
+                            isCameraMode = state.isCameraMode,
+                            rulerP1 = state.rulerPoint1,
+                            rulerP2 = state.rulerPoint2,
+                            cameraGridOpacity = state.cameraGridOpacity,
+                            cameraImageOpacity = state.cameraImageOpacity,
+                        )
+                    }
+                }
             }
         }
-        
-        // ── Ruler Distance Overlay ────────────────────────────────────────────
+
+        // ── Layer 2: UI Overlay (NO haze modifier here — text is always sharp)
+
+        // Ruler Distance Overlay
         val dist = viewModel.getMeasuredDistanceMm()
         if (state.showRuler && dist != null) {
             Box(
@@ -190,7 +193,31 @@ fun EditorScreen(
             }
         }
 
-        // ── Toast ─────────────────────────────────────────────────────────────
+        // Zoom level indicator
+        if (zoom != 1f) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.5f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                ) {
+                    Text(
+                        "${String.format("%.1f", zoom)}×",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        // Toast
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -204,7 +231,7 @@ fun EditorScreen(
             )
         }
 
-        // ── Floating Tool Dock ────────────────────────────────────────────────
+        // Floating Tool Dock
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -215,11 +242,22 @@ fun EditorScreen(
                 visible = !state.isPanelOpen,
                 showRuler = state.showRuler,
                 showGrid = state.grid.enabled,
+                isCameraMode = state.isCameraMode,
                 onFitScreen = {
-                    // Reset to fit; will center
-                    zoom = 0.5f
-                    panX = 40f
-                    panY = 80f
+                    // Auto-fit canvas to screen
+                    val ppMm = state.ppi / 25.4f
+                    val (rawW, rawH) = when (state.paperSize) {
+                        com.gridraw.app.data.models.PaperSize.CUSTOM -> Pair(state.customWidthMm, state.customHeightMm)
+                        else -> {
+                            val base = Pair(state.paperSize.widthMm, state.paperSize.heightMm)
+                            if (state.orientation == com.gridraw.app.data.models.Orientation.LANDSCAPE) Pair(base.second, base.first)
+                            else base
+                        }
+                    }
+                    val canvasW = (rawW * ppMm).coerceAtLeast(100f)
+                    zoom = 0.85f
+                    panX = 20f
+                    panY = 60f
                     viewModel.setViewport(zoom, panX, panY)
                 },
                 onToggleGrid = {
@@ -231,7 +269,7 @@ fun EditorScreen(
             )
         }
 
-        // ── Control Panel ─────────────────────────────────────────────────────
+        // Control Panel
         ControlPanel(
             isOpen = state.isPanelOpen,
             activeTab = state.activeTab,
@@ -243,6 +281,9 @@ fun EditorScreen(
             grid = state.grid,
             ppi = state.ppi,
             hasImage = state.hasImage,
+            isCameraMode = state.isCameraMode,
+            cameraGridOpacity = state.cameraGridOpacity,
+            cameraImageOpacity = state.cameraImageOpacity,
             onClose = { viewModel.closePanel() },
             onTabChange = { viewModel.setActiveTab(it) },
             onPaperSizeChange = { viewModel.setPaperSize(it) },
@@ -254,10 +295,12 @@ fun EditorScreen(
             onPpiChange = { viewModel.setPpi(it) },
             onExport = { viewModel.exportImage(context) {} },
             onExtractPalette = { viewModel.extractPalette() },
+            onCameraGridOpacityChange = { viewModel.setCameraGridOpacity(it) },
+            onCameraImageOpacityChange = { viewModel.setCameraImageOpacity(it) },
             hazeState = hazeState
         )
 
-        // ── Palette Sheet ─────────────────────────────────────────────────────
+        // Palette Sheet
         if (state.showPaletteSheet) {
             PaletteBottomSheet(
                 colors = state.extractedPalette,
@@ -265,7 +308,7 @@ fun EditorScreen(
             )
         }
 
-        // ── Loading Overlay ───────────────────────────────────────────────────
+        // Loading Overlay
         AnimatedVisibility(
             visible = state.isLoading,
             enter = fadeIn(),
@@ -301,13 +344,13 @@ private fun WelcomePlaceholder(onImport: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .clip(RoundedCornerShape(28.dp))
-                .background(BgPanel.copy(alpha = 0.9f))
+                .background(BgPanel.copy(alpha = 0.95f))
                 .padding(40.dp)
         ) {
             Icon(
                 Icons.Rounded.AddPhotoAlternate,
                 contentDescription = null,
-                tint = AccentBlue.copy(alpha = 0.7f),
+                tint = TextMain.copy(alpha = 0.7f),
                 modifier = Modifier.size(64.dp)
             )
             Spacer(Modifier.height(20.dp))
@@ -328,12 +371,12 @@ private fun WelcomePlaceholder(onImport: () -> Unit) {
             Spacer(Modifier.height(28.dp))
             Button(
                 onClick = onImport,
-                colors = ButtonDefaults.buttonColors(containerColor = AccentBlue),
+                colors = ButtonDefaults.buttonColors(containerColor = Color.White),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp))
+                Icon(Icons.Rounded.FolderOpen, null, Modifier.size(18.dp), tint = Color.Black)
                 Spacer(Modifier.width(8.dp))
-                Text("Browse Gallery", fontWeight = FontWeight.SemiBold)
+                Text("Browse Gallery", fontWeight = FontWeight.SemiBold, color = Color.Black)
             }
         }
     }

@@ -16,6 +16,8 @@ import androidx.lifecycle.viewModelScope
 import com.gridraw.app.GridRawApplication
 import com.gridraw.app.data.models.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,16 +25,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // Editor State
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 data class EditorState(
     val isLoading: Boolean = false,
     val loadingMessage: String = "Processing…",
     val hasImage: Boolean = false,
     val sourceBitmap: Bitmap? = null,
-    val processedBitmap: Bitmap? = null,
     val pendingCropBitmap: Bitmap? = null,
 
     val paperSize: PaperSize = PaperSize.A4,
@@ -41,11 +42,8 @@ data class EditorState(
     val customHeightMm: Float = 200f,
 
     val cropState: CropState = CropState(),
-
     val filters: ImageFilters = ImageFilters(),
-
     val grid: GridConfig = GridConfig(),
-
     val ppi: Float = 96f,
 
     // Viewport
@@ -53,9 +51,9 @@ data class EditorState(
     val viewportOffsetX: Float = 0f,
     val viewportOffsetY: Float = 0f,
 
-    // UI state
+    // UI
     val isPanelOpen: Boolean = false,
-    val activeTab: Int = 0,          // 0=Canvas 1=Image 2=Grid 3=Export
+    val activeTab: Int = 0,
     val isCameraMode: Boolean = false,
     val showRuler: Boolean = false,
     val rulerPoint1: Pair<Float, Float>? = null,
@@ -69,7 +67,6 @@ data class EditorState(
 
 enum class ToastType { INFO, SUCCESS, WARNING, ERROR }
 
-// History Snapshot (lightweight, without bitmaps)
 data class HistorySnapshot(
     val paperSize: PaperSize,
     val orientation: Orientation,
@@ -81,9 +78,9 @@ data class HistorySnapshot(
     val ppi: Float
 )
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // EditorViewModel
-// ──────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 class EditorViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -96,15 +93,17 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     private val historyStack = ArrayDeque<HistorySnapshot>()
     private val maxHistory = 20
 
-    // PPI detection: use device xdpi
+    // Debounce jobs for high-frequency updates (sliders)
+    private var filterDebounceJob: Job? = null
+    private var gridDebounceJob: Job? = null
+    private var toastJob: Job? = null
+
     init {
         val displayDpi = application.resources.displayMetrics.xdpi
         _state.update { it.copy(ppi = displayDpi.coerceIn(72f, 600f)) }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Image Loading
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Image Loading ────────────────────────────────────────────────────────
 
     fun loadImageFromUri(context: Context, uri: Uri, onLoaded: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
@@ -116,12 +115,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 if (bitmap != null) {
-                    _state.update {
-                        it.copy(
-                            pendingCropBitmap = bitmap,
-                            isLoading = false
-                        )
-                    }
+                    _state.update { it.copy(pendingCropBitmap = bitmap, isLoading = false) }
                     withContext(Dispatchers.Main) { onLoaded(true) }
                 } else {
                     showToast("Failed to load image", ToastType.ERROR)
@@ -136,7 +130,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun applyCrop(context: Context, bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation) {
+    fun applyCrop(context: Context, bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation, sourceUri: String? = null) {
         _state.update {
             it.copy(
                 sourceBitmap = bitmap,
@@ -148,21 +142,13 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         pushHistory()
-        // Automatically save to projects on import
-        saveCurrentProject(context, "Project ${System.currentTimeMillis()}", null)
+        saveCurrentProject(context, "Project ${System.currentTimeMillis()}", sourceUri)
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Canvas Setup
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Canvas Setup ─────────────────────────────────────────────────────────
 
     fun setPaperSize(size: PaperSize) {
         _state.update { it.copy(paperSize = size) }
-        pushHistory()
-    }
-
-    fun setOrientation(orientation: Orientation) {
-        _state.update { it.copy(orientation = orientation) }
         pushHistory()
     }
 
@@ -190,37 +176,42 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 else base
             }
         }
-        return Pair((wMm * ppMm).toInt().coerceAtLeast(100),
-                    (hMm * ppMm).toInt().coerceAtLeast(100))
+        return Pair(
+            (wMm * ppMm).toInt().coerceAtLeast(100),
+            (hMm * ppMm).toInt().coerceAtLeast(100)
+        )
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Filters
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Filters (debounced to avoid history spam on slider drag) ─────────────
 
     fun updateFilters(filters: ImageFilters) {
         _state.update { it.copy(filters = filters) }
-        pushHistory()
+        filterDebounceJob?.cancel()
+        filterDebounceJob = viewModelScope.launch {
+            delay(400)
+            pushHistory()
+        }
     }
 
     fun resetFilters() {
+        filterDebounceJob?.cancel()
         _state.update { it.copy(filters = ImageFilters()) }
         showToast("Filters reset", ToastType.INFO)
         pushHistory()
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Grid
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Grid (debounced) ─────────────────────────────────────────────────────
 
     fun updateGrid(grid: GridConfig) {
         _state.update { it.copy(grid = grid) }
-        pushHistory()
+        gridDebounceJob?.cancel()
+        gridDebounceJob = viewModelScope.launch {
+            delay(400)
+            pushHistory()
+        }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Viewport
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Viewport ─────────────────────────────────────────────────────────────
 
     fun setViewport(zoom: Float, offsetX: Float, offsetY: Float) {
         _state.update { it.copy(viewportZoom = zoom, viewportOffsetX = offsetX, viewportOffsetY = offsetY) }
@@ -231,11 +222,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         pushHistory()
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // UI Control
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── UI Control ───────────────────────────────────────────────────────────
 
-    fun openPanel(tab: Int = 0) {
+    // FIX: was ignoring the tab param and always using 0
+    fun openPanel(tab: Int = _state.value.activeTab) {
         _state.update { it.copy(isPanelOpen = true, activeTab = tab) }
     }
 
@@ -257,22 +247,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setRulerPoint(x: Float, y: Float) {
         val st = _state.value
-        if (st.rulerPoint1 == null) {
-            _state.update { it.copy(rulerPoint1 = Pair(x, y)) }
-        } else if (st.rulerPoint2 == null) {
-            _state.update { it.copy(rulerPoint2 = Pair(x, y)) }
-        } else {
-            _state.update { it.copy(rulerPoint1 = Pair(x, y), rulerPoint2 = null) }
+        when {
+            st.rulerPoint1 == null -> _state.update { it.copy(rulerPoint1 = Pair(x, y)) }
+            st.rulerPoint2 == null -> _state.update { it.copy(rulerPoint2 = Pair(x, y)) }
+            else -> _state.update { it.copy(rulerPoint1 = Pair(x, y), rulerPoint2 = null) }
         }
     }
 
+    // FIX: ruler points are already in canvas space; zoom should not be divided again
     fun getMeasuredDistanceMm(): Float? {
         val st = _state.value
         val p1 = st.rulerPoint1 ?: return null
         val p2 = st.rulerPoint2 ?: return null
         val ppMm = st.ppi / 25.4f
-        val dx = (p2.first - p1.first) / st.viewportZoom / ppMm
-        val dy = (p2.second - p1.second) / st.viewportZoom / ppMm
+        val dx = (p2.first - p1.first) / ppMm
+        val dy = (p2.second - p1.second) / ppMm
         return Math.sqrt((dx * dx + dy * dy).toDouble()).toFloat()
     }
 
@@ -284,12 +273,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 try {
                     val palette = androidx.palette.graphics.Palette.from(bitmap).generate()
                     listOfNotNull(
-                        palette.vibrantSwatch?.rgb?.toLong()?.or(0xFF000000),
-                        palette.darkVibrantSwatch?.rgb?.toLong()?.or(0xFF000000),
-                        palette.lightVibrantSwatch?.rgb?.toLong()?.or(0xFF000000),
-                        palette.mutedSwatch?.rgb?.toLong()?.or(0xFF000000),
-                        palette.darkMutedSwatch?.rgb?.toLong()?.or(0xFF000000),
-                        palette.lightMutedSwatch?.rgb?.toLong()?.or(0xFF000000)
+                        palette.vibrantSwatch?.rgb?.toLong()?.or(0xFF000000L),
+                        palette.darkVibrantSwatch?.rgb?.toLong()?.or(0xFF000000L),
+                        palette.lightVibrantSwatch?.rgb?.toLong()?.or(0xFF000000L),
+                        palette.mutedSwatch?.rgb?.toLong()?.or(0xFF000000L),
+                        palette.darkMutedSwatch?.rgb?.toLong()?.or(0xFF000000L),
+                        palette.lightMutedSwatch?.rgb?.toLong()?.or(0xFF000000L)
                     )
                 } catch (e: Exception) { emptyList() }
             }
@@ -302,20 +291,20 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun showToast(message: String, type: ToastType = ToastType.INFO) {
+        toastJob?.cancel()
         _state.update { it.copy(toastMessage = message, toastType = type) }
-        viewModelScope.launch {
-            kotlinx.coroutines.delay(3000)
+        toastJob = viewModelScope.launch {
+            delay(3000)
             _state.update { it.copy(toastMessage = null) }
         }
     }
 
     fun dismissToast() {
+        toastJob?.cancel()
         _state.update { it.copy(toastMessage = null) }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Undo / Redo
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Undo ─────────────────────────────────────────────────────────────────
 
     private fun pushHistory() {
         val st = _state.value
@@ -329,6 +318,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             grid = st.grid,
             ppi = st.ppi
         )
+        // Avoid duplicate snapshots
+        if (historyStack.lastOrNull() == snap) return
         if (historyStack.size >= maxHistory) historyStack.removeFirst()
         historyStack.addLast(snap)
         _state.update { it.copy(canUndo = historyStack.size > 1) }
@@ -354,31 +345,31 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         showToast("Undone", ToastType.INFO)
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Export
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Export ───────────────────────────────────────────────────────────────
 
     fun exportImage(context: Context, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, loadingMessage = "Exporting…") }
+            _state.update { it.copy(isLoading = true, loadingMessage = "Exporting image…") }
             val success = withContext(Dispatchers.IO) {
                 try {
                     val st = _state.value
                     val src = st.sourceBitmap ?: return@withContext false
                     val (cw, ch) = getCanvasSizePx()
 
-                    // 1. Create output bitmap
                     val out = Bitmap.createBitmap(cw, ch, Bitmap.Config.ARGB_8888)
                     val canvas = android.graphics.Canvas(out)
                     canvas.drawColor(android.graphics.Color.WHITE)
 
-                    // 2. Draw image with filters
+                    // FIX: match the exact same color matrix logic as GridCanvas
                     val paint = Paint(Paint.ANTI_ALIAS_FLAG)
                     val cm = ColorMatrix()
+                    val brightness = st.filters.brightness / 100f
+                    val contrast = st.filters.contrast / 100f
+                    val translate = 128f * (1f - contrast) + 128f * (brightness - 1f)
                     cm.set(floatArrayOf(
-                        st.filters.brightness / 100f, 0f, 0f, 0f, 0f,
-                        0f, st.filters.brightness / 100f, 0f, 0f, 0f,
-                        0f, 0f, st.filters.brightness / 100f, 0f, 0f,
+                        contrast, 0f, 0f, 0f, translate,
+                        0f, contrast, 0f, 0f, translate,
+                        0f, 0f, contrast, 0f, translate,
                         0f, 0f, 0f, 1f, 0f
                     ))
                     if (st.filters.grayscale) {
@@ -394,10 +385,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     val dst = android.graphics.RectF(dx, dy, dx + src.width * scale, dy + src.height * scale)
                     canvas.drawBitmap(src, null, dst, paint)
 
-                    // 3. Draw grid overlay
                     drawGridOnCanvas(canvas, cw.toFloat(), ch.toFloat(), st.grid, st.ppi)
 
-                    // 4. Save to MediaStore
                     val filename = "GRIDRAW_${System.currentTimeMillis()}.jpg"
                     val values = ContentValues().apply {
                         put(MediaStore.Images.Media.DISPLAY_NAME, filename)
@@ -413,9 +402,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                     }
                     out.recycle()
                     uri != null
-                } catch (e: Exception) {
-                    false
-                }
+                } catch (e: Exception) { false }
             }
             _state.update { it.copy(isLoading = false) }
             withContext(Dispatchers.Main) {
@@ -437,31 +424,27 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         val boxPx = grid.sizeMm * ppMm
         if (boxPx < 5f) return
 
-        val color = grid.colorHex.toInt()
+        // FIX: correct Long-safe color extraction
+        val rawColor = grid.colorHex
+        val r = ((rawColor shr 16) and 0xFF).toInt()
+        val g = ((rawColor shr 8) and 0xFF).toInt()
+        val b = (rawColor and 0xFF).toInt()
         val alpha = (grid.opacityPct / 100f * 255).toInt()
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = grid.thickness
-            this.color = (color and 0x00FFFFFF) or (alpha shl 24)
+            color = android.graphics.Color.argb(alpha, r, g, b)
         }
 
-        // Draw vertical lines
         var x = 0f
-        while (x <= cw) {
-            canvas.drawLine(x, 0f, x, ch, paint)
-            x += boxPx
-        }
-        // Draw horizontal lines
+        while (x <= cw + 0.5f) { canvas.drawLine(x, 0f, x, ch, paint); x += boxPx }
         var y = 0f
-        while (y <= ch) {
-            canvas.drawLine(0f, y, cw, y, paint)
-            y += boxPx
-        }
+        while (y <= ch + 0.5f) { canvas.drawLine(0f, y, cw, y, paint); y += boxPx }
 
-        // Diagonals
         if (grid.showDiagonals) {
-            paint.alpha = (alpha * 0.5f).toInt()
+            val savedAlpha = paint.alpha
+            paint.alpha = (savedAlpha * 0.5f).toInt()
             var cx = 0f
             while (cx < cw) {
                 var cy = 0f
@@ -472,10 +455,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 cx += boxPx
             }
-            paint.alpha = alpha
+            paint.alpha = savedAlpha
         }
 
-        // Rule of Thirds
         if (grid.showThirds) {
             paint.color = android.graphics.Color.argb(200, 255, 77, 106)
             paint.strokeWidth = grid.thickness * 2.5f
@@ -485,75 +467,75 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             canvas.drawLine(0f, ch * 2f / 3f, cw, ch * 2f / 3f, paint)
         }
 
-        // Symmetry H
         if (grid.showSymmetryH) {
             paint.color = android.graphics.Color.argb(200, 0, 230, 118)
             paint.strokeWidth = grid.thickness * 2f
             canvas.drawLine(0f, ch / 2f, cw, ch / 2f, paint)
         }
 
-        // Symmetry V
         if (grid.showSymmetryV) {
             paint.color = android.graphics.Color.argb(200, 0, 230, 118)
             paint.strokeWidth = grid.thickness * 2f
             canvas.drawLine(cw / 2f, 0f, cw / 2f, ch, paint)
         }
 
-        // Labels
+        if (grid.showSymmetryRadial) {
+            val cx = cw / 2f; val cy = ch / 2f
+            val radius = maxOf(cw, ch)
+            paint.color = android.graphics.Color.argb(153, 152, 107, 255)
+            paint.strokeWidth = grid.thickness
+            val segments = grid.symmetrySegments.coerceIn(2, 36)
+            for (i in 0 until segments) {
+                val angle = Math.PI * 2.0 * i / segments
+                canvas.drawLine(cx, cy,
+                    cx + (radius * Math.cos(angle)).toFloat(),
+                    cy + (radius * Math.sin(angle)).toFloat(), paint)
+            }
+        }
+
         if (grid.showLabels) {
-            val fontSize = boxPx * 0.28f
+            val fontSize = (boxPx * 0.28f).coerceIn(10f, 36f)
             val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                this.color = (color and 0x00FFFFFF) or (0xFF shl 24)
+                color = android.graphics.Color.argb(255, r, g, b)
                 textSize = fontSize
                 isFakeBoldText = true
             }
             val strokePaint = Paint(textPaint).apply {
                 style = Paint.Style.STROKE
                 strokeWidth = 3f
-                this.color = android.graphics.Color.argb(200, 255, 255, 255)
+                color = android.graphics.Color.argb(180, 255, 255, 255)
             }
-
-            var col = 1
-            var lx = 0f
+            var col = 1; var lx = 0f
             while (lx < cw - 10) {
                 val txt = col.toString()
                 canvas.drawText(txt, lx + 4f, fontSize + 4f, strokePaint)
                 canvas.drawText(txt, lx + 4f, fontSize + 4f, textPaint)
-                lx += boxPx
-                col++
+                lx += boxPx; col++
             }
-
-            var row = 0
-            var ly = 0f
+            var row = 0; var ly = 0f
             while (ly < ch - 10) {
-                val label = rowLabel(row)
-                val yPos = ly + fontSize * 2f + 4f
+                val label = buildRowLabel(row)
+                val yPos = ly + fontSize * 2.2f
                 canvas.drawText(label, 4f, yPos, strokePaint)
                 canvas.drawText(label, 4f, yPos, textPaint)
-                ly += boxPx
-                row++
+                ly += boxPx; row++
             }
         }
     }
 
-    private fun rowLabel(n: Int): String {
-        var num = n
-        var label = ""
-        do {
-            label = ('A' + (num % 26)).toString() + label
-            num = num / 26 - 1
-        } while (num >= 0)
+    // FIX: unified with GridCanvas version
+    private fun buildRowLabel(n: Int): String {
+        var num = n; var label = ""
+        do { label = ('A' + (num % 26)).toString() + label; num = num / 26 - 1 } while (num >= 0)
         return label
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // Project Save/Load
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── Project Save/Load ────────────────────────────────────────────────────
 
     fun saveCurrentProject(context: Context, name: String, imageUri: String?) {
         viewModelScope.launch {
             val st = _state.value
-            val project = Project(
+            val project = com.gridraw.app.data.models.Project(
                 name = name,
                 updatedAt = System.currentTimeMillis(),
                 imageUri = imageUri,
@@ -564,7 +546,6 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 ppi = st.ppi
             )
             dao.insertProject(project)
-            showToast("Project saved!", ToastType.SUCCESS)
         }
     }
 }
