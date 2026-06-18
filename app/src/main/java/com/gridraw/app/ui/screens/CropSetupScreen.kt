@@ -37,6 +37,8 @@ fun CropSetupScreen(
     bitmap: Bitmap,
     initialPaperSize: PaperSize,
     initialOrientation: Orientation,
+    customWidthMm: Float = 200f,
+    customHeightMm: Float = 200f,
     onConfirm: (Bitmap, PaperSize, Orientation) -> Unit,
     onCancel: () -> Unit
 ) {
@@ -68,7 +70,9 @@ fun CropSetupScreen(
                 Text("Adjust Image to Paper", color = TextMain, fontSize = 18.sp)
                 IconButton(onClick = {
                     // Generate final cropped bitmap
-                    val (wMm, hMm) = if (orientation == Orientation.LANDSCAPE) {
+                    val (wMm, hMm) = if (paperSize == PaperSize.CUSTOM) {
+                        Pair(customWidthMm, customHeightMm)
+                    } else if (orientation == Orientation.LANDSCAPE) {
                         Pair(paperSize.heightMm, paperSize.widthMm)
                     } else {
                         Pair(paperSize.widthMm, paperSize.heightMm)
@@ -153,7 +157,9 @@ fun CropSetupScreen(
                     val cw = containerSize.width.toFloat()
                     val ch = containerSize.height.toFloat()
                     
-                    val (wMm, hMm) = if (orientation == Orientation.LANDSCAPE) {
+                    val (wMm, hMm) = if (paperSize == PaperSize.CUSTOM) {
+                        Pair(customWidthMm, customHeightMm)
+                    } else if (orientation == Orientation.LANDSCAPE) {
                         Pair(paperSize.heightMm, paperSize.widthMm)
                     } else {
                         Pair(paperSize.widthMm, paperSize.heightMm)

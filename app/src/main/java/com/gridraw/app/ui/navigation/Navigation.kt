@@ -47,6 +47,8 @@ fun GridRawNavGraph(navController: NavHostController) {
                     bitmap = bitmap,
                     initialPaperSize = state.paperSize,
                     initialOrientation = state.orientation,
+                    customWidthMm = state.customWidthMm,
+                    customHeightMm = state.customHeightMm,
                     onConfirm = { b, ps, o ->
                         editorViewModel.applyCrop(navController.context, b, ps, o)
                         navController.navigate(Screen.Editor.route) {
