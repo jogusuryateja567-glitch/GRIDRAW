@@ -35,6 +35,7 @@ data class EditorState(
     val hasImage: Boolean = false,
     val sourceBitmap: Bitmap? = null,
     val pendingCropBitmap: Bitmap? = null,
+    val pendingImageUri: String? = null, // Track source URI for project save
 
     val paperSize: PaperSize = PaperSize.A4,
     val orientation: Orientation = Orientation.PORTRAIT,
@@ -101,6 +102,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     private var gridDebounceJob: Job? = null
     private var toastJob: Job? = null
 
+    companion object {
+        private const val MAX_BITMAP_DIMENSION = 2048
+    }
+
     init {
         val displayDpi = application.resources.displayMetrics.xdpi
         _state.update { it.copy(ppi = displayDpi.coerceIn(72f, 600f)) }
@@ -108,17 +113,67 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     // ── Image Loading ────────────────────────────────────────────────────────
 
+    /**
+     * Load image from URI with automatic downsampling to prevent OOM crashes.
+     * Large photos (e.g. 4000×3000) are decoded at reduced resolution.
+     */
     fun loadImageFromUri(context: Context, uri: Uri, onLoaded: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loadingMessage = "Loading image…") }
             try {
                 val bitmap = withContext(Dispatchers.IO) {
+                    // Step 1: Decode bounds only to calculate sample size
+                    val options = BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
                     context.contentResolver.openInputStream(uri)?.use { stream ->
-                        BitmapFactory.decodeStream(stream)
+                        BitmapFactory.decodeStream(stream, null, options)
+                    }
+
+                    val origWidth = options.outWidth
+                    val origHeight = options.outHeight
+
+                    if (origWidth <= 0 || origHeight <= 0) return@withContext null
+
+                    // Step 2: Calculate inSampleSize to downsample large images
+                    var sampleSize = 1
+                    val maxDim = maxOf(origWidth, origHeight)
+                    if (maxDim > MAX_BITMAP_DIMENSION) {
+                        while (maxDim / sampleSize > MAX_BITMAP_DIMENSION * 2) {
+                            sampleSize *= 2
+                        }
+                    }
+
+                    // Step 3: Decode with downsampling
+                    val decodeOptions = BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                        inPreferredConfig = Bitmap.Config.ARGB_8888
+                    }
+                    val decoded = context.contentResolver.openInputStream(uri)?.use { stream ->
+                        BitmapFactory.decodeStream(stream, null, decodeOptions)
+                    } ?: return@withContext null
+
+                    // Step 4: If still larger than max, scale down precisely
+                    val longestEdge = maxOf(decoded.width, decoded.height)
+                    if (longestEdge > MAX_BITMAP_DIMENSION) {
+                        val scale = MAX_BITMAP_DIMENSION.toFloat() / longestEdge
+                        val newW = (decoded.width * scale).toInt().coerceAtLeast(1)
+                        val newH = (decoded.height * scale).toInt().coerceAtLeast(1)
+                        val scaled = Bitmap.createScaledBitmap(decoded, newW, newH, true)
+                        if (scaled !== decoded) decoded.recycle()
+                        scaled
+                    } else {
+                        decoded
                     }
                 }
                 if (bitmap != null) {
-                    _state.update { it.copy(pendingCropBitmap = bitmap, isLoading = false) }
+                    _state.update {
+                        it.copy(
+                            pendingCropBitmap = bitmap,
+                            pendingImageUri = uri.toString(),
+                            isLoading = false
+                        )
+                    }
                     withContext(Dispatchers.Main) { onLoaded(true) }
                 } else {
                     showToast("Failed to load image", ToastType.ERROR)
@@ -134,10 +189,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun applyCrop(context: Context, bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation, sourceUri: String? = null) {
+        val uriToStore = sourceUri ?: _state.value.pendingImageUri
         _state.update {
             it.copy(
                 sourceBitmap = bitmap,
                 pendingCropBitmap = null,
+                pendingImageUri = null,
                 hasImage = true,
                 paperSize = paperSize,
                 orientation = orientation,
@@ -145,7 +202,10 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         pushHistory()
-        saveCurrentProject(context, "Project ${System.currentTimeMillis()}", sourceUri)
+        // Generate descriptive project name from metadata
+        val gridSizeMm = _state.value.grid.sizeMm.toInt()
+        val projectName = "${paperSize.name} · ${orientation.name.lowercase().replaceFirstChar { it.uppercase() }} · ${gridSizeMm}mm"
+        saveCurrentProject(context, projectName, uriToStore)
     }
 
     // ── Canvas Setup ─────────────────────────────────────────────────────────
@@ -183,6 +243,44 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             (wMm * ppMm).toInt().coerceAtLeast(100),
             (hMm * ppMm).toInt().coerceAtLeast(100)
         )
+    }
+
+    // ── Auto Fit Viewport ────────────────────────────────────────────────────
+
+    /**
+     * Calculate zoom and pan to fit the canvas to the available screen area.
+     * Called after image load to ensure the full image is visible.
+     */
+    fun autoFitViewport(screenWidth: Float, screenHeight: Float) {
+        val st = _state.value
+        val ppMm = st.ppi / 25.4f
+        val (rawW, rawH) = when (st.paperSize) {
+            PaperSize.CUSTOM -> Pair(st.customWidthMm, st.customHeightMm)
+            else -> {
+                val base = Pair(st.paperSize.widthMm, st.paperSize.heightMm)
+                if (st.orientation == Orientation.LANDSCAPE) Pair(base.second, base.first)
+                else base
+            }
+        }
+        val canvasW = (rawW * ppMm).coerceAtLeast(100f)
+        val canvasH = (rawH * ppMm).coerceAtLeast(100f)
+
+        // Fit with 8% padding
+        val zoomX = screenWidth * 0.92f / canvasW
+        val zoomY = screenHeight * 0.92f / canvasH
+        val fitZoom = minOf(zoomX, zoomY).coerceIn(0.05f, 10f)
+
+        // Center the canvas
+        val panX = (screenWidth - canvasW * fitZoom) / 2f
+        val panY = (screenHeight - canvasH * fitZoom) / 2f
+
+        _state.update {
+            it.copy(
+                viewportZoom = fitZoom,
+                viewportOffsetX = panX,
+                viewportOffsetY = panY
+            )
+        }
     }
 
     // ── Filters (debounced to avoid history spam on slider drag) ─────────────

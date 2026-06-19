@@ -68,6 +68,22 @@ fun ControlPanel(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
+    // Build dynamic tab list: Grid → Canvas → Image → Export (+ Camera only in AR mode)
+    val tabs = remember(isCameraMode) {
+        buildList {
+            add(TabItem(Icons.Rounded.GridOn, "Grid", TabContent.GRID))
+            add(TabItem(Icons.Rounded.GridView, "Canvas", TabContent.CANVAS))
+            add(TabItem(Icons.Rounded.Tune, "Image", TabContent.IMAGE))
+            if (isCameraMode) {
+                add(TabItem(Icons.Rounded.PhotoCamera, "Camera", TabContent.CAMERA))
+            }
+            add(TabItem(Icons.Rounded.FileDownload, "Export", TabContent.EXPORT))
+        }
+    }
+
+    // Clamp activeTab to valid range when tabs change
+    val safeActiveTab = activeTab.coerceIn(0, tabs.lastIndex.coerceAtLeast(0))
+
     if (isOpen) {
         ModalBottomSheet(
             onDismissRequest = onClose,
@@ -100,7 +116,7 @@ fun ControlPanel(
                 }
 
                 // Tab Row
-                PanelTabRow(activeTab = activeTab, onTabChange = onTabChange)
+                PanelTabRow(tabs = tabs, activeTab = safeActiveTab, onTabChange = onTabChange)
 
                 HorizontalDivider(color = BorderLight, thickness = 1.dp)
 
@@ -112,8 +128,13 @@ fun ControlPanel(
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
-                    when (activeTab) {
-                        0 -> CanvasTab(
+                    val currentContent = tabs.getOrNull(safeActiveTab)?.content ?: TabContent.GRID
+                    when (currentContent) {
+                        TabContent.GRID -> GridTab(
+                            grid = grid,
+                            onGridChange = onGridChange
+                        )
+                        TabContent.CANVAS -> CanvasTab(
                             paperSize = paperSize,
                             orientation = orientation,
                             customWidthMm = customWidthMm,
@@ -124,24 +145,20 @@ fun ControlPanel(
                             onCustomDimsChange = onCustomDimsChange,
                             onPpiChange = onPpiChange
                         )
-                        1 -> ImageTab(
+                        TabContent.IMAGE -> ImageTab(
                             filters = filters,
                             hasImage = hasImage,
                             onFiltersChange = onFiltersChange,
                             onFiltersReset = onFiltersReset,
                             onExtractPalette = onExtractPalette
                         )
-                        2 -> GridTab(
-                            grid = grid,
-                            onGridChange = onGridChange
-                        )
-                        3 -> CameraTab(
+                        TabContent.CAMERA -> CameraTab(
                             cameraGridOpacity = cameraGridOpacity,
                             cameraImageOpacity = cameraImageOpacity,
                             onCameraGridOpacityChange = onCameraGridOpacityChange,
                             onCameraImageOpacityChange = onCameraImageOpacityChange
                         )
-                        4 -> ExportTab(
+                        TabContent.EXPORT -> ExportTab(
                             hasImage = hasImage,
                             onExport = onExport
                         )
@@ -152,27 +169,25 @@ fun ControlPanel(
     }
 }
 
+// ── Tab Content Enum ──────────────────────────────────────────────────────────
+
+private enum class TabContent {
+    GRID, CANVAS, IMAGE, CAMERA, EXPORT
+}
+
 // ── Tab Row ───────────────────────────────────────────────────────────────────
 
-private data class TabItem(val icon: ImageVector, val label: String)
-
-private val TABS = listOf(
-    TabItem(Icons.Rounded.GridView, "Canvas"),
-    TabItem(Icons.Rounded.Tune, "Image"),
-    TabItem(Icons.Rounded.GridOn, "Grid"),
-    TabItem(Icons.Rounded.PhotoCamera, "Camera"),
-    TabItem(Icons.Rounded.FileDownload, "Export"),
-)
+private data class TabItem(val icon: ImageVector, val label: String, val content: TabContent)
 
 @Composable
-private fun PanelTabRow(activeTab: Int, onTabChange: (Int) -> Unit) {
+private fun PanelTabRow(tabs: List<TabItem>, activeTab: Int, onTabChange: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        TABS.forEachIndexed { index, tab ->
+        tabs.forEachIndexed { index, tab ->
             val selected = index == activeTab
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

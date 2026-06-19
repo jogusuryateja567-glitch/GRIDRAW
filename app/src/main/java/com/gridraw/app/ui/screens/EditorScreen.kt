@@ -49,6 +49,9 @@ fun EditorScreen(
     var panX by remember { mutableFloatStateOf(state.viewportOffsetX) }
     var panY by remember { mutableFloatStateOf(state.viewportOffsetY) }
 
+    // Track whether we've done auto-fit for this image
+    var hasAutoFit by remember { mutableStateOf(false) }
+
     BackHandler { onNavigateBack() }
 
     // Image picker for replacing image
@@ -60,6 +63,9 @@ fun EditorScreen(
 
     // hazeState is attached ONLY to the background canvas layer, not the whole screen
     val hazeState = remember { HazeState() }
+
+    // Safe margin for dragging (in pixels) — allows dragging slightly past edge
+    val dragSafeMargin = 200f
 
     // Root container — pure black, no haze here
     Box(
@@ -89,6 +95,18 @@ fun EditorScreen(
                 val canvasW = (rawW * ppMm).coerceAtLeast(100f)
                 val canvasH = (rawH * ppMm).coerceAtLeast(100f)
 
+                // Auto fit-to-screen when image first loads
+                LaunchedEffect(state.hasImage, state.paperSize, state.orientation) {
+                    if (state.hasImage && !hasAutoFit && screenWidth > 0f && screenHeight > 0f) {
+                        viewModel.autoFitViewport(screenWidth, screenHeight)
+                        val newState = viewModel.state.value
+                        zoom = newState.viewportZoom
+                        panX = newState.viewportOffsetX
+                        panY = newState.viewportOffsetY
+                        hasAutoFit = true
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -104,14 +122,21 @@ fun EditorScreen(
                                 val scaledW = canvasW * newZoom
                                 val scaledH = canvasH * newZoom
 
+                                // Pan constraints with safe margin for comfortable edge dragging
                                 if (scaledW >= screenWidth) {
-                                    newPanX = newPanX.coerceIn(screenWidth - scaledW, 0f)
+                                    newPanX = newPanX.coerceIn(
+                                        screenWidth - scaledW - dragSafeMargin,
+                                        dragSafeMargin
+                                    )
                                 } else {
                                     newPanX = (screenWidth - scaledW) / 2f
                                 }
 
                                 if (scaledH >= screenHeight) {
-                                    newPanY = newPanY.coerceIn(screenHeight - scaledH, 0f)
+                                    newPanY = newPanY.coerceIn(
+                                        screenHeight - scaledH - dragSafeMargin,
+                                        dragSafeMargin
+                                    )
                                 } else {
                                     newPanY = (screenHeight - scaledH) / 2f
                                 }
@@ -244,7 +269,7 @@ fun EditorScreen(
                 showGrid = state.grid.enabled,
                 isCameraMode = state.isCameraMode,
                 onFitScreen = {
-                    // Auto-fit canvas to screen
+                    // Proper auto-fit calculation using actual screen + canvas dimensions
                     val ppMm = state.ppi / 25.4f
                     val (rawW, rawH) = when (state.paperSize) {
                         com.gridraw.app.data.models.PaperSize.CUSTOM -> Pair(state.customWidthMm, state.customHeightMm)
@@ -255,9 +280,20 @@ fun EditorScreen(
                         }
                     }
                     val canvasW = (rawW * ppMm).coerceAtLeast(100f)
-                    zoom = 0.85f
-                    panX = 20f
-                    panY = 60f
+                    val canvasH = (rawH * ppMm).coerceAtLeast(100f)
+
+                    // Use display metrics to get actual screen size
+                    val metrics = context.resources.displayMetrics
+                    val screenW = metrics.widthPixels.toFloat()
+                    val screenH = metrics.heightPixels.toFloat()
+
+                    val zoomX = screenW * 0.92f / canvasW
+                    val zoomY = screenH * 0.92f / canvasH
+                    val fitZoom = minOf(zoomX, zoomY).coerceIn(0.05f, 10f)
+
+                    zoom = fitZoom
+                    panX = (screenW - canvasW * fitZoom) / 2f
+                    panY = (screenH - canvasH * fitZoom) / 2f
                     viewModel.setViewport(zoom, panX, panY)
                 },
                 onToggleGrid = {

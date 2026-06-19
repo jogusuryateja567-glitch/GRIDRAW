@@ -53,9 +53,10 @@ fun CropSetupScreen(
     var paperSize by remember { mutableStateOf(initialPaperSize) }
     var orientation by remember { mutableStateOf(initialOrientation) }
 
-    var imgPanX by remember { mutableFloatStateOf(0f) }
-    var imgPanY by remember { mutableFloatStateOf(0f) }
-    var imgZoom by remember { mutableFloatStateOf(1f) }
+    // Optional user adjustments (pinch/drag) on top of auto-fit
+    var userPanX by remember { mutableFloatStateOf(0f) }
+    var userPanY by remember { mutableFloatStateOf(0f) }
+    var userZoom by remember { mutableFloatStateOf(1f) }
     var hasGestured by remember { mutableStateOf(false) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -101,12 +102,14 @@ fun CropSetupScreen(
                         .clip(CircleShape)
                         .background(Color.White)
                         .clickable {
-                            // Build output bitmap
+                            // Build output bitmap: auto-fit image to paper with white fill
                             val (wMm, hMm) = getPaperDimsMm(paperSize, orientation, customWidthMm, customHeightMm)
                             if (wMm <= 0f || hMm <= 0f) {
                                 onConfirm(bitmap, paperSize, orientation)
                                 return@clickable
                             }
+
+                            // Output resolution: maintain paper aspect ratio, max 2048px
                             val maxDim = minOf(2048, maxOf(bitmap.width, bitmap.height))
                             val outW: Int
                             val outH: Int
@@ -117,34 +120,37 @@ fun CropSetupScreen(
                                 outH = maxDim
                                 outW = (maxDim * (wMm / hMm)).toInt().coerceAtLeast(1)
                             }
+
                             val outBitmap = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888)
                             val canvas = Canvas(outBitmap)
                             canvas.drawColor(AndroidColor.WHITE)
 
+                            // FIT image into paper (not cover): maintain aspect ratio,
+                            // center, white fill on empty space
+                            val imgW = bitmap.width.toFloat()
+                            val imgH = bitmap.height.toFloat()
+
+                            // Base fit scale (fit the whole image into the output)
+                            val fitScale = minOf(outW / imgW, outH / imgH)
+
+                            // Apply user zoom on top of fit
+                            val finalScale = fitScale * userZoom
+
+                            // Center with user pan offset
+                            // Scale user pan from screen preview space to output space
                             val cw = containerSize.width.toFloat()
                             val ch = containerSize.height.toFloat()
-                            if (cw == 0f || ch == 0f) {
-                                onConfirm(bitmap, paperSize, orientation)
-                                return@clickable
-                            }
-                            val aspect = wMm / hMm
-                            val screenPaperW: Float
-                            val screenPaperH: Float
-                            if (cw / ch > aspect) {
-                                screenPaperH = ch * 0.82f
-                                screenPaperW = screenPaperH * aspect
-                            } else {
-                                screenPaperW = cw * 0.82f
-                                screenPaperH = screenPaperW / aspect
-                            }
-                            val outScale = outW / screenPaperW
+                            val outputScaleFactor = if (cw > 0f) outW / cw else 1f
+
+                            val dx = (outW - imgW * finalScale) / 2f + userPanX * outputScaleFactor
+                            val dy = (outH - imgH * finalScale) / 2f + userPanY * outputScaleFactor
+
                             val matrix = android.graphics.Matrix()
-                            val dx = (outW - bitmap.width * imgZoom * outScale) / 2f + imgPanX * outScale
-                            val dy = (outH - bitmap.height * imgZoom * outScale) / 2f + imgPanY * outScale
-                            matrix.postScale(imgZoom * outScale, imgZoom * outScale)
+                            matrix.postScale(finalScale, finalScale)
                             matrix.postTranslate(dx, dy)
                             val paint = Paint(Paint.ANTI_ALIAS_FLAG).also { it.isFilterBitmap = true }
                             canvas.drawBitmap(bitmap, matrix, paint)
+
                             onConfirm(outBitmap, paperSize, orientation)
                         },
                     contentAlignment = Alignment.Center
@@ -162,9 +168,9 @@ fun CropSetupScreen(
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, gestureZoom, _ ->
                             hasGestured = true
-                            imgZoom = (imgZoom * gestureZoom).coerceIn(0.1f, 10f)
-                            imgPanX += pan.x
-                            imgPanY += pan.y
+                            userZoom = (userZoom * gestureZoom).coerceIn(0.3f, 5f)
+                            userPanX += pan.x
+                            userPanY += pan.y
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -186,6 +192,11 @@ fun CropSetupScreen(
                         paperH = paperW / aspect
                     }
 
+                    // Calculate auto-fit scale for preview: fit bitmap into paper preview
+                    val imgW = bitmap.width.toFloat()
+                    val imgH = bitmap.height.toFloat()
+                    val previewFitScale = minOf(paperW / imgW, paperH / imgH)
+
                     with(LocalDensity.current) {
                         Box(
                             modifier = Modifier
@@ -195,12 +206,15 @@ fun CropSetupScreen(
                                 .background(Color.White)
                                 .clip(RoundedCornerShape(2.dp))
                         ) {
-                            // Image
+                            // Image — auto-fit + user pan/zoom
                             ComposeCanvas(modifier = Modifier.fillMaxSize()) {
+                                val drawScale = previewFitScale * userZoom
+                                val drawDx = (size.width - imgW * drawScale) / 2f + userPanX
+                                val drawDy = (size.height - imgH * drawScale) / 2f + userPanY
+
                                 withTransform({
-                                    translate(left = size.width / 2f + imgPanX, top = size.height / 2f + imgPanY)
-                                    scale(imgZoom, imgZoom)
-                                    translate(left = -bitmap.width / 2f, top = -bitmap.height / 2f)
+                                    translate(left = drawDx, top = drawDy)
+                                    scale(drawScale, drawScale, pivot = Offset.Zero)
                                 }) {
                                     drawImage(bitmap.asImageBitmap(), topLeft = Offset.Zero)
                                 }
@@ -244,7 +258,7 @@ fun CropSetupScreen(
                             .padding(horizontal = 10.dp, vertical = 5.dp)
                     ) {
                         Text(
-                            "${String.format("%.1f", imgZoom)}×",
+                            "${String.format("%.1f", userZoom)}×",
                             color = Color.White,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
@@ -313,7 +327,14 @@ fun CropSetupScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(bgColor)
                                 .border(1.dp, if (selected) Color.Transparent else Color(0xFF2C2C2E), RoundedCornerShape(10.dp))
-                                .clickable { paperSize = size }
+                                .clickable {
+                                    paperSize = size
+                                    // Reset user adjustments on paper change for clean auto-fit
+                                    userPanX = 0f
+                                    userPanY = 0f
+                                    userZoom = 1f
+                                    hasGestured = false
+                                }
                                 .padding(vertical = 10.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -346,7 +367,14 @@ fun CropSetupScreen(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(bgColor)
                                 .border(1.dp, if (selected) Color.Transparent else Color(0xFF2C2C2E), RoundedCornerShape(10.dp))
-                                .clickable { orientation = ori }
+                                .clickable {
+                                    orientation = ori
+                                    // Reset user adjustments on orientation change
+                                    userPanX = 0f
+                                    userPanY = 0f
+                                    userZoom = 1f
+                                    hasGestured = false
+                                }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {

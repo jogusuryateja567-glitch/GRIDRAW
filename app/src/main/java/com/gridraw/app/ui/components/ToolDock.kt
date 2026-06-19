@@ -45,8 +45,6 @@ fun ToolDock(
 ) {
     val haptic = LocalHapticFeedback.current
 
-    // FIX: was animating from `it * 2` (double height = huge jarring jump)
-    // Now uses a smooth spring slide from just below screen
     AnimatedVisibility(
         visible = visible,
         enter = slideInVertically(
@@ -109,15 +107,18 @@ fun ToolDock(
                     }
                 )
 
-                DockButton(
-                    icon = Icons.Rounded.PhotoCamera,
-                    label = "AR",
-                    isActive = isCameraMode,
-                    onClick = {
-                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onCameraMode()
-                    }
-                )
+                // Camera button only shown when already in AR mode (to toggle off)
+                if (isCameraMode) {
+                    DockButton(
+                        icon = Icons.Rounded.PhotoCamera,
+                        label = "AR",
+                        isActive = true,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onCameraMode()
+                        }
+                    )
+                }
 
                 DockDivider()
 
