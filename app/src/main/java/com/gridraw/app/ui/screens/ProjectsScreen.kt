@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import com.gridraw.app.data.models.Project
 import com.gridraw.app.ui.theme.*
+import androidx.compose.ui.platform.LocalContext
+import com.gridraw.app.viewmodel.EditorViewModel
 import com.gridraw.app.viewmodel.ProjectViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -34,10 +36,12 @@ import java.util.*
 @Composable
 fun ProjectsScreen(
     projectViewModel: ProjectViewModel,
+    editorViewModel: EditorViewModel,
     onOpenProject: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     val projects by projectViewModel.projects.collectAsState()
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
@@ -96,7 +100,10 @@ fun ProjectsScreen(
                     items(projects, key = { it.id }) { project ->
                         ProjectCard(
                             project = project,
-                            onOpen = { onOpenProject() },
+                            onOpen = {
+                                editorViewModel.loadProject(context, project)
+                                onOpenProject()
+                            },
                             onDelete = { projectViewModel.deleteProject(project) },
                             onRename = { projectViewModel.renameProject(project, it) }
                         )
