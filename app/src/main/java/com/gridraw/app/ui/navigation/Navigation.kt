@@ -115,6 +115,7 @@ fun GridRawNavGraph(navController: NavHostController) {
         composable(Screen.Projects.route) {
             ProjectsScreen(
                 projectViewModel = projectViewModel,
+                editorViewModel = editorViewModel,
                 onOpenProject = { navController.navigate(Screen.Editor.route) },
                 onNavigateBack = { navController.popBackStack() }
             )

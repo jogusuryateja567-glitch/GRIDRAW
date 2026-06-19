@@ -657,4 +657,22 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             dao.insertProject(project)
         }
     }
+
+    fun loadProject(context: Context, project: Project) {
+        _state.update {
+            it.copy(
+                paperSize = try { PaperSize.valueOf(project.paperSize) } catch(e: Exception) { PaperSize.A4 },
+                orientation = try { Orientation.valueOf(project.orientation) } catch(e: Exception) { Orientation.PORTRAIT },
+                customWidthMm = project.customWidthMm,
+                customHeightMm = project.customHeightMm,
+                ppi = project.ppi,
+                pendingImageUri = project.imageUri
+            )
+        }
+        if (!project.imageUri.isNullOrEmpty()) {
+            loadImageFromUri(context, Uri.parse(project.imageUri))
+        } else {
+            _state.update { it.copy(hasImage = false, sourceBitmap = null) }
+        }
+    }
 }

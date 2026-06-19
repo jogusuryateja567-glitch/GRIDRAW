@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -783,12 +784,16 @@ fun InfoRow(key: String, value: String) {
 @Composable
 fun gridTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = Color.White.copy(alpha = 0.5f),
-    unfocusedBorderColor = BorderLight,
-    focusedLabelColor = Color.White.copy(alpha = 0.7f),
+    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+    focusedLabelColor = Color.White.copy(alpha = 0.8f),
     unfocusedLabelColor = TextMuted,
     cursorColor = Color.White,
-    focusedTextColor = TextMain,
+    focusedTextColor = Color.White,
     unfocusedTextColor = TextMain,
-    unfocusedContainerColor = BgInput,
-    focusedContainerColor = BgInputHover
+    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+    focusedContainerColor = Color.White.copy(alpha = 0.1f)
 )
+
+private fun Modifier.paddingTop(dp: androidx.compose.ui.unit.Dp) = this.padding(top = dp)
+
+private fun Modifier.scale(scale: Float) = this.graphicsLayer { scaleX = scale; scaleY = scale }
