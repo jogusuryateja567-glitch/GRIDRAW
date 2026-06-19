@@ -88,12 +88,8 @@ fun GridRawNavGraph(navController: NavHostController) {
                     CircularProgressIndicator(color = AccentBlue, strokeWidth = 3.dp)
                 }
             } else {
-                // Bitmap is truly null and not loading — go back after a brief delay
-                // to prevent instant flash
-                LaunchedEffect(Unit) {
-                    delay(100)
-                    navController.popBackStack()
-                }
+                // Bitmap is truly null and not loading — do nothing, just show empty or let caller handle
+                // to prevent instant flash and premature popping
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

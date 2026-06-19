@@ -34,13 +34,14 @@ import dev.chrisbanes.haze.HazeStyle
 fun ToolDock(
     hazeState: HazeState,
     visible: Boolean,
-    showRuler: Boolean,
+    showPalette: Boolean,
     showGrid: Boolean,
     isCameraMode: Boolean = false,
+    onRealSize: () -> Unit,
     onFitScreen: () -> Unit,
     onToggleGrid: () -> Unit,
     onOpenPanel: () -> Unit,
-    onToggleRuler: () -> Unit,
+    onTogglePalette: () -> Unit,
     onCameraMode: () -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
@@ -65,6 +66,7 @@ fun ToolDock(
         ) {
             Row(
                 modifier = Modifier
+                    .fillMaxWidth(0.95f)
                     .padding(bottom = 24.dp)
                     .hazeChild(
                         state = hazeState,
@@ -74,8 +76,19 @@ fun ToolDock(
                     .border(1.dp, BorderGlass, RoundedCornerShape(100.dp))
                     .padding(horizontal = 6.dp, vertical = 5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
+                DockButton(
+                    icon = Icons.Rounded.ZoomInMap,
+                    label = "1:1",
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onRealSize()
+                    }
+                )
+
+                DockDivider()
+
                 DockButton(
                     icon = Icons.Rounded.FitScreen,
                     label = "Fit",
@@ -98,12 +111,12 @@ fun ToolDock(
                 )
 
                 DockButton(
-                    icon = Icons.Rounded.Straighten,
-                    label = "Ruler",
-                    isActive = showRuler,
+                    icon = Icons.Rounded.Palette,
+                    label = "Palette",
+                    isActive = showPalette,
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onToggleRuler()
+                        onTogglePalette()
                     }
                 )
 

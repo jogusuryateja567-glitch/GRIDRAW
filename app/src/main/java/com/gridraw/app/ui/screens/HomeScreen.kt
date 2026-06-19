@@ -57,13 +57,25 @@ fun HomeScreen(
         }
     }
 
+    val arImageLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            editorViewModel.loadImageFromUri(context, it) { success ->
+                if (success) {
+                    editorViewModel.setPendingArMode(true)
+                    onNavigate(Screen.CropSetup.route)
+                }
+            }
+        }
+    }
+
     // Camera permission
     val cameraPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         if (granted) {
-            editorViewModel.toggleCameraMode()
-            onNewProject()
+            arImageLauncher.launch("image/*")
         }
     }
 

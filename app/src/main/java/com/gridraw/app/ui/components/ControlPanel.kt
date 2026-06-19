@@ -49,6 +49,7 @@ fun ControlPanel(
     grid: GridConfig,
     ppi: Float,
     hasImage: Boolean,
+    isArProject: Boolean,
     isCameraMode: Boolean,
     cameraGridOpacity: Float,
     cameraImageOpacity: Float,
@@ -69,15 +70,16 @@ fun ControlPanel(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
 
-    // Build dynamic tab list: Grid → Canvas → Image → Export (+ Camera only in AR mode)
-    val tabs = remember(isCameraMode) {
+    // Build dynamic tab list: Camera (if AR) → Grid → Canvas → Image → Export
+    // Using isArProject ensures the Camera tab doesn't disappear if user turns off the camera mode toggle.
+    val tabs = remember(isArProject) {
         buildList {
+            if (isArProject) {
+                add(TabItem(Icons.Rounded.PhotoCamera, "Camera", TabContent.CAMERA))
+            }
             add(TabItem(Icons.Rounded.GridOn, "Grid", TabContent.GRID))
             add(TabItem(Icons.Rounded.GridView, "Canvas", TabContent.CANVAS))
             add(TabItem(Icons.Rounded.Tune, "Image", TabContent.IMAGE))
-            if (isCameraMode) {
-                add(TabItem(Icons.Rounded.PhotoCamera, "Camera", TabContent.CAMERA))
-            }
             add(TabItem(Icons.Rounded.FileDownload, "Export", TabContent.EXPORT))
         }
     }

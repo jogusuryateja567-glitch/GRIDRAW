@@ -36,6 +36,7 @@ data class EditorState(
     val sourceBitmap: Bitmap? = null,
     val pendingCropBitmap: Bitmap? = null,
     val pendingImageUri: String? = null, // Track source URI for project save
+    val pendingArMode: Boolean = false, // True if initiated from AR Drawing button
 
     val paperSize: PaperSize = PaperSize.A4,
     val orientation: Orientation = Orientation.PORTRAIT,
@@ -55,6 +56,7 @@ data class EditorState(
     // UI
     val isPanelOpen: Boolean = false,
     val activeTab: Int = 0,
+    val isArProject: Boolean = false,
     val isCameraMode: Boolean = false,
     val showRuler: Boolean = false,
     val rulerPoint1: Pair<Float, Float>? = null,
@@ -188,14 +190,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    fun setPendingArMode(value: Boolean) {
+        _state.update { it.copy(pendingArMode = value) }
+    }
+
     fun applyCrop(context: Context, bitmap: Bitmap, paperSize: PaperSize, orientation: Orientation, sourceUri: String? = null) {
         val uriToStore = sourceUri ?: _state.value.pendingImageUri
+        val isAr = _state.value.pendingArMode
         _state.update {
             it.copy(
                 sourceBitmap = bitmap,
                 pendingCropBitmap = null,
                 pendingImageUri = null,
+                pendingArMode = false,
                 hasImage = true,
+                isCameraMode = if (isAr) true else it.isCameraMode,
                 paperSize = paperSize,
                 orientation = orientation,
                 cropState = CropState(scale = 1f)
@@ -204,7 +213,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         pushHistory()
         // Generate descriptive project name from metadata
         val gridSizeMm = _state.value.grid.sizeMm.toInt()
-        val projectName = "${paperSize.name} · ${orientation.name.lowercase().replaceFirstChar { it.uppercase() }} · ${gridSizeMm}mm"
+        val prefix = if (isAr) "AR Drawing · " else ""
+        val projectName = "$prefix${paperSize.name} · ${orientation.name.lowercase().replaceFirstChar { it.uppercase() }} · ${gridSizeMm}mm"
         saveCurrentProject(context, projectName, uriToStore)
     }
 
@@ -659,6 +669,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun loadProject(context: Context, project: Project) {
+        val isAr = project.name.startsWith("AR Drawing")
         _state.update {
             it.copy(
                 paperSize = try { PaperSize.valueOf(project.paperSize) } catch(e: Exception) { PaperSize.A4 },
@@ -666,7 +677,9 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 customWidthMm = project.customWidthMm,
                 customHeightMm = project.customHeightMm,
                 ppi = project.ppi,
-                pendingImageUri = project.imageUri
+                pendingImageUri = project.imageUri,
+                isArProject = isAr,
+                isCameraMode = isAr
             )
         }
         if (!project.imageUri.isNullOrEmpty()) {
