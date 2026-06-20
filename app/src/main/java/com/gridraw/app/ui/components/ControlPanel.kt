@@ -483,26 +483,26 @@ private fun ImageTab(
 
         StyledSlider(
             label = "Brightness",
-            value = filters.brightness.toFloat(),
+            value = filters.brightness,
             range = -100f..100f,
-            displayValue = (if (filters.brightness > 0) "+${filters.brightness}" else "${filters.brightness}") + "%",
-            onValueChange = { onFiltersChange(filters.copy(brightness = it.toInt())) }
+            displayValue = (if (filters.brightness > 0) "+${filters.brightness.toInt()}" else "${filters.brightness.toInt()}") + "%",
+            onValueChange = { onFiltersChange(filters.copy(brightness = it)) }
         )
 
         StyledSlider(
             label = "Contrast",
-            value = filters.contrast.toFloat(),
+            value = filters.contrast,
             range = -100f..100f,
-            displayValue = (if (filters.contrast > 0) "+${filters.contrast}" else "${filters.contrast}") + "%",
-            onValueChange = { onFiltersChange(filters.copy(contrast = it.toInt())) }
+            displayValue = (if (filters.contrast > 0) "+${filters.contrast.toInt()}" else "${filters.contrast.toInt()}") + "%",
+            onValueChange = { onFiltersChange(filters.copy(contrast = it)) }
         )
 
         StyledSlider(
             label = "Saturation",
-            value = filters.saturation.toFloat(),
+            value = filters.saturation,
             range = 0f..200f,
-            displayValue = "${filters.saturation}%",
-            onValueChange = { onFiltersChange(filters.copy(saturation = it.toInt())) }
+            displayValue = "${filters.saturation.toInt()}%",
+            onValueChange = { onFiltersChange(filters.copy(saturation = it)) }
         )
 
         ToggleRow(
