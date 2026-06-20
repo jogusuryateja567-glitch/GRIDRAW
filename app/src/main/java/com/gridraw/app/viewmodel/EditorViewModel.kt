@@ -119,7 +119,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
      * Load image from URI with automatic downsampling to prevent OOM crashes.
      * Large photos (e.g. 4000×3000) are decoded at reduced resolution.
      */
-    fun loadImageFromUri(context: Context, uri: Uri, onLoaded: (Boolean) -> Unit = {}) {
+    fun loadImageFromUri(context: Context, uri: Uri, isProjectLoad: Boolean = false, onLoaded: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, loadingMessage = "Loading image…") }
             try {
@@ -170,11 +170,21 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 if (bitmap != null) {
                     _state.update {
-                        it.copy(
-                            pendingCropBitmap = bitmap,
-                            pendingImageUri = uri.toString(),
-                            isLoading = false
-                        )
+                        if (isProjectLoad) {
+                            it.copy(
+                                sourceBitmap = bitmap,
+                                pendingCropBitmap = null,
+                                pendingImageUri = uri.toString(),
+                                hasImage = true,
+                                isLoading = false
+                            )
+                        } else {
+                            it.copy(
+                                pendingCropBitmap = bitmap,
+                                pendingImageUri = uri.toString(),
+                                isLoading = false
+                            )
+                        }
                     }
                     withContext(Dispatchers.Main) { onLoaded(true) }
                 } else {
@@ -683,7 +693,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
         if (!project.imageUri.isNullOrEmpty()) {
-            loadImageFromUri(context, Uri.parse(project.imageUri))
+            loadImageFromUri(context, Uri.parse(project.imageUri), isProjectLoad = true)
         } else {
             _state.update { it.copy(hasImage = false, sourceBitmap = null) }
         }

@@ -72,7 +72,7 @@ fun GridRawNavGraph(navController: NavHostController) {
                             sourceUri = state.pendingImageUri
                         )
                         navController.navigate(Screen.Editor.route) {
-                            popUpTo(Screen.Home.route)
+                            popUpTo(Screen.Home.route) { inclusive = true }
                         }
                     },
                     onCancel = { navController.popBackStack() }
@@ -104,7 +104,11 @@ fun GridRawNavGraph(navController: NavHostController) {
         composable(Screen.Editor.route) {
             EditorScreen(
                 viewModel = editorViewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { 
+                    navController.navigate(Screen.Home.route) {
+                        popUpTo(0)
+                    }
+                }
             )
         }
 
@@ -112,7 +116,11 @@ fun GridRawNavGraph(navController: NavHostController) {
             ProjectsScreen(
                 projectViewModel = projectViewModel,
                 editorViewModel = editorViewModel,
-                onOpenProject = { navController.navigate(Screen.Editor.route) },
+                onOpenProject = { 
+                    navController.navigate(Screen.Editor.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
                 onNavigateBack = { navController.popBackStack() }
             )
         }

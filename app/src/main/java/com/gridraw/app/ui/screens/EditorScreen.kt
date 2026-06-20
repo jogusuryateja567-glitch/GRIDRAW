@@ -111,7 +111,8 @@ fun EditorScreen(
                         .fillMaxSize()
                         .pointerInput(state.paperSize, state.orientation, state.ppi) {
                             detectTransformGestures { centroid, pan, gestureZoom, _ ->
-                                val newZoom = (zoom * gestureZoom).coerceIn(0.1f, 10f)
+                                val minZoom = minOf(screenWidth * 0.90f / canvasW, screenHeight * 0.85f / canvasH).coerceIn(0.05f, 10f)
+                                val newZoom = (zoom * gestureZoom).coerceIn(minZoom, 10f)
                                 val zoomFactor = newZoom / zoom
 
                                 var newPanX = centroid.x - (centroid.x - panX) * zoomFactor + pan.x
@@ -218,20 +219,38 @@ fun EditorScreen(
             }
         }
 
-        // FIX: Zoom indicator only shows when NOT at 1.0x (avoids constant on-screen noise)
-        // Show when zoom deviates more than 1% from 1.0
-        if (kotlin.math.abs(zoom - 1f) > 0.01f) {
+        // Top-left controls: Back button and Zoom indicator
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Back Button
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, top = 16.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { onNavigateBack() }
+                    .padding(8.dp)
             ) {
+                Icon(
+                    Icons.Rounded.ArrowBack, 
+                    contentDescription = "Back to Home", 
+                    tint = Color.White.copy(alpha = 0.85f), 
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Zoom indicator
+            if (kotlin.math.abs(zoom - 1f) > 0.01f) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         "${String.format("%.1f", zoom)}×",
@@ -266,36 +285,11 @@ fun EditorScreen(
             ToolDock(
                 hazeState = hazeState,
                 visible = !state.isPanelOpen,
-                showPalette = state.showPaletteSheet,
+                showRuler = state.showRuler,
                 showGrid = state.grid.enabled,
                 isCameraMode = state.isCameraMode,
-                onRealSize = {
-                    val ppMm = state.ppi / 25.4f
-                    val (rawW, rawH) = when (state.paperSize) {
-                        com.gridraw.app.data.models.PaperSize.CUSTOM ->
-                            Pair(state.customWidthMm, state.customHeightMm)
-                        else -> {
-                            val base = Pair(state.paperSize.widthMm, state.paperSize.heightMm)
-                            if (state.orientation == com.gridraw.app.data.models.Orientation.LANDSCAPE)
-                                Pair(base.second, base.first)
-                            else base
-                        }
-                    }
-                    val canvasW = (rawW * ppMm).coerceAtLeast(100f)
-                    val canvasH = (rawH * ppMm).coerceAtLeast(100f)
-
-                    val metrics = context.resources.displayMetrics
-                    val screenW = metrics.widthPixels.toFloat()
-                    val screenH = metrics.heightPixels.toFloat()
-
-                    zoom = 1f
-                    panX = (screenW - canvasW) / 2f
-                    panY = (screenH - canvasH) / 2f
-                    viewModel.setViewport(zoom, panX, panY)
-                },
+                isArProject = state.isArProject,
                 onFitScreen = {
-                    // FIX: use BoxWithConstraints-derived layout width from density-aware insets
-                    // instead of raw displayMetrics which ignores cutouts and nav bars
                     val ppMm = state.ppi / 25.4f
                     val (rawW, rawH) = when (state.paperSize) {
                         com.gridraw.app.data.models.PaperSize.CUSTOM ->
@@ -310,14 +304,13 @@ fun EditorScreen(
                     val canvasW = (rawW * ppMm).coerceAtLeast(100f)
                     val canvasH = (rawH * ppMm).coerceAtLeast(100f)
 
-                    // Use WindowMetrics-safe approach via context.resources
                     val metrics = context.resources.displayMetrics
                     val screenW = metrics.widthPixels.toFloat()
                     val screenH = metrics.heightPixels.toFloat()
 
                     val fitZoom = minOf(
                         screenW * 0.90f / canvasW,
-                        screenH * 0.85f / canvasH  // FIX: leave more vertical room for dock + bars
+                        screenH * 0.85f / canvasH
                     ).coerceIn(0.05f, 10f)
 
                     zoom = fitZoom
@@ -329,9 +322,7 @@ fun EditorScreen(
                     viewModel.updateGrid(state.grid.copy(enabled = !state.grid.enabled))
                 },
                 onOpenPanel = { viewModel.openPanel() },
-                onTogglePalette = {
-                    if (state.showPaletteSheet) viewModel.closePaletteSheet() else viewModel.extractPalette()
-                },
+                onToggleRuler = { viewModel.toggleRuler() },
                 onCameraMode = { viewModel.toggleCameraMode() }
             )
         }
