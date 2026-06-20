@@ -82,8 +82,7 @@ fun ToolDock(
                         shape = RoundedCornerShape(28.dp),
                         style = HazeStyle(
                             blurRadius = 30.dp,
-                            tint = Color(0x1A191924),
-                            blurredCornerRadius = 28.dp
+                            tint = Color(0x1A191924)
                         )
                     )
                     .clip(RoundedCornerShape(28.dp))
@@ -280,7 +279,7 @@ fun SettingsButton(onClick: () -> Unit) {
 fun DockDivider() {
     Box(
         modifier = Modifier
-            .width(1.5f)
+            .width(1.5.dp)
             .height(24.dp)
             .background(Color.White.copy(alpha = 0.15f))
     )

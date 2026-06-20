@@ -107,8 +107,7 @@ fun ControlPanel(
                         shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
                         style = HazeStyle(
                             blurRadius = 30.dp,
-                            tint = Color(0x1A191924),
-                            blurredCornerRadius = 32.dp
+                            tint = Color(0x1A191924)
                         )
                     )
                     .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
@@ -246,7 +245,7 @@ private fun TabButton(
                 else Color.Transparent
             )
             .border(
-                width = 1.5f,
+                width = 1.5.dp,
                 color = if (selected) Color.White.copy(alpha = 0.3f) else Color.Transparent,
                 shape = RoundedCornerShape(16.dp)
             )
@@ -282,7 +281,7 @@ private fun TabButton(
             Box(
                 modifier = Modifier
                     .width(20.dp)
-                    .height(2.5f)
+                    .height(2.5.dp)
                     .clip(CircleShape)
                     .background(Color.White)
             )
@@ -414,7 +413,7 @@ private fun CanvasTab(
 
         ToggleRow(
             label = "Landscape Orientation",
-            icon = if (orientation == Orientation.LANDSCAPE) Icons.Rounded.ScreenRotation else Icons.Rounded.ScreenRotationUp,
+            icon = if (orientation == Orientation.LANDSCAPE) Icons.Rounded.ScreenRotation else Icons.Rounded.ScreenLockRotation,
             enabled = orientation == Orientation.LANDSCAPE,
             onToggle = onOrientationToggle
         )
@@ -583,7 +582,7 @@ private fun ExportTab(
                 .size(80.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.White.copy(alpha = 0.1f))
-                .border(1.5f, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp)),
+                .border(1.5.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -658,7 +657,7 @@ fun ToggleRow(
             .clip(RoundedCornerShape(14.dp))
             .background(if (enabled) Color.White.copy(alpha = 0.12f) else Color.Transparent)
             .border(
-                1.5f,
+                1.5.dp,
                 if (enabled) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
                 RoundedCornerShape(14.dp)
             )
@@ -908,7 +907,7 @@ fun PaperSizeOption(
             .clip(RoundedCornerShape(12.dp))
             .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
             .border(
-                1.5f,
+                1.5.dp,
                 if (selected) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f),
                 RoundedCornerShape(12.dp)
             )
