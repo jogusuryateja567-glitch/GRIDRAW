@@ -31,6 +31,9 @@ import com.gridraw.app.ui.theme.*
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeChild
 import dev.chrisbanes.haze.HazeStyle
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.ui.graphics.graphicsLayer
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ControlPanel — Professional Settings Bottom Sheet with Glassmorphic Design
@@ -483,7 +486,7 @@ private fun ImageTab(
             label = "Brightness",
             value = filters.brightness.toFloat(),
             range = -100f..100f,
-            displayValue = "${filters.brightness:+d}%".format(filters.brightness),
+            displayValue = (if (filters.brightness > 0) "+${filters.brightness}" else "${filters.brightness}") + "%",
             onValueChange = { onFiltersChange(filters.copy(brightness = it.toInt())) }
         )
 
@@ -491,7 +494,7 @@ private fun ImageTab(
             label = "Contrast",
             value = filters.contrast.toFloat(),
             range = -100f..100f,
-            displayValue = "${filters.contrast:+d}%".format(filters.contrast),
+            displayValue = (if (filters.contrast > 0) "+${filters.contrast}" else "${filters.contrast}") + "%",
             onValueChange = { onFiltersChange(filters.copy(contrast = it.toInt())) }
         )
 
@@ -951,7 +954,3 @@ fun gridTextFieldColors() = OutlinedTextFieldDefaults.colors(
 private fun Modifier.paddingTop(dp: androidx.compose.ui.unit.Dp) = this.padding(top = dp)
 
 private fun Modifier.scale(scale: Float) = this.graphicsLayer { scaleX = scale; scaleY = scale }
-
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.ui.graphics.graphicsLayer
